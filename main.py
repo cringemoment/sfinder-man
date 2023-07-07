@@ -18,7 +18,7 @@ import asyncio
 import json
 import re
 
-print("sdsdadasd")
+import random #haha get it because it's random
 
 keep_alive()
 bot_token = environ["bot_token"]
