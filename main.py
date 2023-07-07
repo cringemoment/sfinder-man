@@ -18,6 +18,8 @@ import asyncio
 import json
 import re
 
+print("test")
+
 keep_alive()
 bot_token = environ["bot_token"]
 
