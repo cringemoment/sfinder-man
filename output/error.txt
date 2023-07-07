@@ -1,0 +1,17 @@
+# DateTime: 2023/07/07 13:13:17
+# Version: 1.42
+# command: path -t v115@AhC8DeA8BeC8BeA8AeA8CeH8AeG8JeAgH -pp 1040094210650554408/queuefeed.txt --clear 6 --hold avoid -split yes -f csv -k pattern -o output/path.csv -K kicks/jstris180.properties -d 180
+# Error message summary:
+  * Should specify equal to or more than 9 pieces: CurrentPieces=8 [FinderInitializeException]
+
+
+------------------------------
+# Stack trace:
+------------------------------
+
+exceptions.FinderInitializeException: Should specify equal to or more than 9 pieces: CurrentPieces=8
+	at entry.Verify.patterns(Verify.java:63)
+	at entry.path.PathEntryPoint.run(PathEntryPoint.java:124)
+	at entry.EntryPointMain.main(EntryPointMain.java:99)
+	at Main.main(Main.java:5)
+==============================
