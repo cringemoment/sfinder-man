@@ -1,0 +1,39 @@
+# Setup Field
+____**____
+___****___
+___****___
+____**____
+__________
+__________
+__________
+__________
+__________
+__________
+
+# Initialize / User-defined
+Max height: 10
+Kicks: kicks/tetrio180.properties
+Drop: softdrop180
+Operations: 
+Exclude: none
+Using N pieces: == 3
+Using hold: use
+Searching patterns [order]:
+  *p7
+
+# Initialize / System
+Version = 1.42
+Available processors = 1
+Need Pieces = 3
+
+# Search
+  -> Stopwatch start
+     Search sub solutions for '--n-pieces'
+     Found solutions = 0
+     Found sub solutions = 0
+  -> Stopwatch stop : avg.time = 1368 ms [1 counts]
+
+# Output file
+
+# Finalize
+done
