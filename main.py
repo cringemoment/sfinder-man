@@ -1,5 +1,4 @@
 import discord
-from discord import Client
 from copy import deepcopy
 from discord.ext import commands
 import os
@@ -313,7 +312,7 @@ async def hello(ctx):
 
 @bot.command()
 async def shutdown(ctx):
-  if ctx.message.author.id == 696811705619054633 or ctx.message.author.id == 717451031897833512:
+  if ctx.author.id == 696811705619054633 or ctx.author.id == 717451031897833512:
     await ctx.reply('Shutting down...')
     await bot.close()
   else:
@@ -359,8 +358,8 @@ async def sfinder(ctx, command_type=None, *, parameters=None):
   else:
     command_type = command_type.replace('>', "")
     parameters = parameters.replace('>', "")
-    output_filename = f"{ctx.message.author.id}_sfinderoutput.txt"
-    error_filename = f"{ctx.message.author.id}_sfindererror.txt"
+    output_filename = f"{ctx.author.id}_sfinderoutput.txt"
+    error_filename = f"{ctx.author.id}_sfindererror.txt"
 
     if command_type == "percent":
       lastcommand = await system(
@@ -370,22 +369,22 @@ async def sfinder(ctx, command_type=None, *, parameters=None):
     elif command_type == "path":
       lastcommand = await system(
         ctx,
-        f"java -jar sfinder.jar {command_type} {parameters} -o {ctx.message.author.id}/{command_type} > {output_filename} 2> {error_filename}"
+        f"java -jar sfinder.jar {command_type} {parameters} -o __userdata/{ctx.author.id}/{command_type} > {output_filename} 2> {error_filename}"
       )
     elif command_type == "setup":
       lastcommand = await system(
         ctx,
-        f"java -jar sfinder.jar {command_type} {parameters} -o {ctx.message.author.id}/setup.html > {output_filename} 2> {error_filename}"
+        f"java -jar sfinder.jar {command_type} {parameters} -o __userdata/{ctx.author.id}/setup.html > {output_filename} 2> {error_filename}"
       )
     elif command_type == "cover":
       lastcommand = await system(
         ctx,
-        f"java -jar sfinder.jar {command_type} {parameters} -o {ctx.message.author.id}/cover.csv > {output_filename} 2> {error_filename}"
+        f"java -jar sfinder.jar {command_type} {parameters} -o __userdata/{ctx.author.id}/cover.csv > {output_filename} 2> {error_filename}"
       )
     else:
       lastcommand = await system(
         ctx,
-        f"java -jar sfinder.jar {command_type} {parameters} -o {ctx.message.author.id}/ > {output_filename} 2> {error_filename}"
+        f"java -jar sfinder.jar {command_type} {parameters} -o __userdata/{ctx.author.id}/ > {output_filename} 2> {error_filename}"
       )
 
     if (lastcommand != 0):
@@ -421,7 +420,7 @@ async def sfinder(ctx, command_type=None, *, parameters=None):
 @bot.command()
 async def getoutputfile(ctx, *, filename):
   filename = filename.replace("/", "")
-  file_path = f"{ctx.author.id}/{filename}"
+  file_path = f"__userdata/{ctx.author.id}/{filename}"
 
   if path.isfile(file_path):
     with open(file_path, "rb") as file:
@@ -446,7 +445,7 @@ async def uploadfile(ctx):
     return
 
   folder_name = str(ctx.author.id)
-  file_path = f"{folder_name}/{file.filename}"
+  file_path = f"__userdata/{folder_name}/{file.filename}"
   # Download the file to the specified folder
   await file.save(file_path)
   await ctx.reply(f"File '{file.filename}' has been saved successfully.")
@@ -454,7 +453,7 @@ async def uploadfile(ctx):
 
 @bot.command()
 async def deletefile(ctx, name=None):
-  folder_name = str(ctx.author.id)
+  folder_name = "__userdata/" + str(ctx.author.id)
   folder_path = folder_name + "/"
 
   if name is None:
@@ -486,7 +485,7 @@ async def deletefile(ctx, name=None):
 @bot.command()
 async def getmyfolder(ctx):
   user_id = str(ctx.author.id)
-  folder_path = f"{user_id}"
+  folder_path = f"__userdata/{user_id}"
 
   if not path.exists(folder_path):
     makedirs(folder_path)
@@ -520,7 +519,7 @@ async def getallsolutions(ctx, *, file_name):
   await ctx.reply(
     "Note: This does not work with spin.html, if someone actually used it.")
 
-  file_path = f"{ctx.author.id}/{file_name}"
+  file_path = f"__userdata/{ctx.author.id}/{file_name}"
 
   if not path.isfile(file_path):
     await ctx.reply("File not found.")
@@ -555,7 +554,7 @@ async def bestsave(ctx, fumen, allpieces, clear=4):
   allpieces = allpieces.upper()
   await system(
     ctx,
-    f"java -jar sfinder.jar path -t {fumen} -p {allpieces} --clear {clear} --split yes --kicks kicks/jstris180.properties -d 180 > {ctx.author.id}/ezsfinder.txt"
+    f"java -jar sfinder.jar path -t {fumen} -p {allpieces} --clear {clear} --split yes --kicks kicks/jstris180.properties -d 180 > __userdata/{ctx.author.id}/ezsfinder.txt"
   )
 
   with open('output/path_unique.html', 'r', encoding="utf-8") as f:
@@ -774,18 +773,18 @@ async def cat_finder(ctx,
 
   allpieces = allpieces.upper()
 
-  piecesfile = open(f"{ctx.author.id}/queuefeed.txt", "w")
+  piecesfile = open(f"__userdata/{ctx.author.id}/queuefeed.txt", "w")
   accum = ""
   for holdqueue in hold_reorders(allpieces):
     accum += holdqueue + "\n"
   piecesfile.write(accum)
   piecesfile.close()
 
-  outputpathfile = f"{ctx.author.id}/path.csv"
+  outputpathfile = f"__userdata/{ctx.author.id}/path.csv"
 
   await system(
     ctx,
-    f"java -jar sfinder.jar path -t {fumen} -pp {ctx.author.id}/queuefeed.txt --clear {highestvalue} --hold avoid --split yes -f csv -k pattern -o {outputpathfile} > {ctx.author.id}/ezsfinder.txt"
+    f"java -jar sfinder.jar path -t {fumen} -pp __userdata/{ctx.author.id}/queuefeed.txt --clear {highestvalue} --hold avoid --split yes -f csv -k pattern -o {outputpathfile} > __userdata/{ctx.author.id}/ezsfinder.txt"
   )
 
   currentpath = open(outputpathfile).read()
@@ -794,9 +793,9 @@ async def cat_finder(ctx,
   else:
     await system(
       ctx,
-      f"node best_score.js initialB2B={fedb2b} initialCombo={combo} queue={allpieces} b2bEndBonus={b2bendbonus} fileName={outputpathfile} > {ctx.author.id}/ezsfinder.txt"
+      f"node best_score.js initialB2B={fedb2b} initialCombo={combo} queue={allpieces} b2bEndBonus={b2bendbonus} fileName={outputpathfile} > __userdata/{ctx.author.id}/ezsfinder.txt"
     )
-    bestsolve = open(f"{ctx.author.id}/ezsfinder.txt").read().splitlines()
+    bestsolve = open(f"__userdata/{ctx.author.id}/ezsfinder.txt").read().splitlines()
     for i in bestsolve:
       await ctx.reply(i)
 
@@ -820,7 +819,7 @@ async def chance(ctx, fumen=None, queue=None, clear=4):
   else:
     pathtest = await system(
       ctx,
-      f"java -jar sfinder.jar percent --tetfu {fumen} --patterns {queue} --clear {clear} -K kicks/jstris180.properties -d 180 > {ctx.author.id}/ezsfinder.txt 2> error.txt"
+      f"java -jar sfinder.jar percent --tetfu {fumen} --patterns {queue} --clear {clear} -K kicks/jstris180.properties -d 180 > __userdata/{ctx.author.id}/ezsfinder.txt 2> error.txt"
     )
     if (pathtest != 0):
       await ctx.reply(
@@ -829,11 +828,11 @@ async def chance(ctx, fumen=None, queue=None, clear=4):
       await ctx.reply(file=discord.File("error.txt"))
       bot.get_command("sfinder").reset_cooldown(ctx)
       return
-    output = open(f"{ctx.author.id}/ezsfinder.txt").read()
+    output = open(f"__userdata/{ctx.author.id}/ezsfinder.txt").read()
     solverate = (output[output.find("success"):output.find("success") +
                         20].split()[2])
     await ctx.reply(f"The chance of solving the setup is {solverate}")
-    remove(f"{ctx.author.id}/ezsfinder.txt")
+    remove(f"__userdata/{ctx.author.id}/ezsfinder.txt")
 
 
 @bot.command()
@@ -848,7 +847,7 @@ async def minimals(ctx, fumen=None, queue=None, clear=4, saves=None):
   if (saves == None or saves.upper() == "ALL"):
     pathtest = await system(
       ctx,
-      f"java -jar sfinder.jar path -f csv -k pattern --tetfu {fumen} --patterns {queue} --clear {clear} -K kicks/jstris180.properties -d 180   > {ctx.author.id}/ezsfinder.txt 2> error.txt"
+      f"java -jar sfinder.jar path -f csv -k pattern --tetfu {fumen} --patterns {queue} --clear {clear} -K kicks/jstris180.properties -d 180   > __userdata/{ctx.author.id}/ezsfinder.txt 2> error.txt"
     )
     if (pathtest != 0):
       await ctx.reply(
@@ -860,15 +859,15 @@ async def minimals(ctx, fumen=None, queue=None, clear=4, saves=None):
 
     await system(
       ctx,
-      f"npx sfinder-minimal output/path.csv > {ctx.author.id}/ezsfinder.txt")
+      f"npx sfinder-minimal output/path.csv > __userdata/{ctx.author.id}/ezsfinder.txt")
     await system(ctx,
-                 f"python true_minimal.py > {ctx.author.id}/ezsfinder.txt")
-    minimallink = open(f"{ctx.author.id}/ezsfinder.txt").read().splitlines()[1]
+                 f"python true_minimal.py > __userdata/{ctx.author.id}/ezsfinder.txt")
+    minimallink = open(f"__userdata/{ctx.author.id}/ezsfinder.txt").read().splitlines()[1]
     await ctx.reply(f"The normal minimals are {minimallink}")
   else:
     pathtest = await system(
       ctx,
-      f"java -jar sfinder.jar path -t {fumen} -p {queue} -f csv -k pattern -K kicks/jstris180.properties -d 180 --clear {clear} --output {ctx.author.id}/path.csv > {ctx.author.id}/ezsfinder.txt 2> error.txt"
+      f"java -jar sfinder.jar path -t {fumen} -p {queue} -f csv -k pattern -K kicks/jstris180.properties -d 180 --clear {clear} --output __userdata/{ctx.author.id}/path.csv > __userdata/{ctx.author.id}/ezsfinder.txt 2> error.txt"
     )
     if (pathtest != 0):
       await ctx.reply(
@@ -879,17 +878,17 @@ async def minimals(ctx, fumen=None, queue=None, clear=4, saves=None):
       return
     filtertest = await system(
       ctx,
-      f'python sfinder-saves.py filter -w "{saves}" -p {queue} -f {ctx.author.id}/path.csv > {ctx.author.id}/ezsfinder.txt 2> {ctx.author.id}/error.txt'
+      f'python sfinder-saves.py filter -w "{saves}" -p {queue} -f __userdata/{ctx.author.id}/path.csv > __userdata/{ctx.author.id}/ezsfinder.txt 2> __userdata/{ctx.author.id}/error.txt'
     )
     if (filtertest != 0):
       await ctx.reply(
         "Something went wrong running sfinder-saves.py. It does not take queue input as liberally as sfinder, so make sure to put commas."
       )
-      await ctx.reply(file=discord.file(f"{ctx.author.id}/error.txt"))
+      await ctx.reply(file=discord.file(f"__userdata/{ctx.author.id}/error.txt"))
     pieces = saves.replace("||", "")
-    output = open(f"{ctx.author.id}/ezsfinder.txt").read().splitlines()
+    output = open(f"__userdata/{ctx.author.id}/ezsfinder.txt").read().splitlines()
     await ctx.reply(f"The save {pieces} minimals are {output[-1]}")
-  remove(f"{ctx.author.id}/ezsfinder.txt")
+  remove(f"__userdata/{ctx.author.id}/ezsfinder.txt")
 
 
 def resize_image_with_median(image, new_width, new_height):
@@ -1051,12 +1050,12 @@ async def tofumen(ctx, preset=None):
         "Preset does not exist (check help for the full list or ping epic to add)\n"
       )
       return
-    open(f"{ctx.author.id}/toFumenRGB.json",
+    open(f"__userdata/{ctx.author.id}/toFumenRGB.json",
          'w').write(open(folderpath).read())
 
-  if not path.exists(f"{ctx.message.author.id}/toFumenRGB.json"):
+  if not path.exists(f"__userdata/{ctx.author.id}/toFumenRGB.json"):
     folderpath = f"rgbShorthands/fumen.json"
-    open(f"{ctx.author.id}/toFumenRGB.json",
+    open(f"__userdata/{ctx.author.id}/toFumenRGB.json",
          'w').write(open(folderpath).read())
 
   # Check if an image is attached
@@ -1081,7 +1080,7 @@ async def tofumen(ctx, preset=None):
     image = image.resize((new_width, new_height), Image.NEAREST)
     # Convert the image to a Tetris field
     pieces = json.loads(
-      open(f"{ctx.message.author.id}/toFumenRGB.json").read())
+      open(f"__userdata/{ctx.author.id}/toFumenRGB.json").read())
 
     field = ''
     for y in range(new_height):
@@ -1260,7 +1259,7 @@ async def score(ctx,
     await ctx.reply("Please specify a fumen and a queue")
     return
 
-  with open(f"{ctx.author.id}/queuefeed.txt", "w") as queuefeed:
+  with open(f"__userdata/{ctx.author.id}/queuefeed.txt", "w") as queuefeed:
     accum = ""
     for i in holdsfinderqueues(queue):
       accum += i + "\n"
@@ -1269,13 +1268,13 @@ async def score(ctx,
   if (not "FILE:" in fumen):
     scorecommand = await system(
       ctx,
-      f"java -jar sfinder.jar path -t {fumen} -pp {ctx.author.id}/queuefeed.txt --clear {clear} --hold avoid -split yes -f csv -k pattern -o output/path.csv -K kicks/jstris180.properties -d 180 > {ctx.author.id}/ezsfinder.txt 2> scoreerror.txt"
+      f"java -jar sfinder.jar path -t {fumen} -pp __userdata/{ctx.author.id}/queuefeed.txt --clear {clear} --hold avoid -split yes -f csv -k pattern -o output/path.csv -K kicks/jstris180.properties -d 180 > __userdata/{ctx.author.id}/ezsfinder.txt 2> scoreerror.txt"
     )
   else:
     file = fumen.split("FILE:")[1]
     scorecommand = await system(
       ctx,
-      f"java -jar sfinder.jar cover -fp {file} -pp {ctx.author.id}/queuefeed.txt --clear {clear} --hold avoid -split yes -f csv -k pattern -o output/cover.csv -K kicks/jstris180.properties -d 180 > {ctx.author.id}/ezsfinder.txt 2> scoreerror.txt"
+      f"java -jar sfinder.jar cover -fp {file} -pp __userdata/{ctx.author.id}/queuefeed.txt --clear {clear} --hold avoid -split yes -f csv -k pattern -o output/cover.csv -K kicks/jstris180.properties -d 180 > __userdata/{ctx.author.id}/ezsfinder.txt 2> scoreerror.txt"
     )
 
   if (scorecommand != 0):
@@ -1288,14 +1287,14 @@ async def score(ctx,
   if (not "FILE:" in fumen):
     await system(
       ctx,
-      f"node avg_score_ezsfinderversion.js queue={queue} initialB2B={initial_b2b} initialCombo={initial_combo} b2bEndBonus={b2b_bonus} > {ctx.author.id}/ezsfinder.txt"
+      f"node avg_score_ezsfinderversion.js queue={queue} initialB2B={initial_b2b} initialCombo={initial_combo} b2bEndBonus={b2b_bonus} > __userdata/{ctx.author.id}/ezsfinder.txt"
     )
   else:
     await system(
       ctx,
-      f"node avg_score_ezsfinderversion.js queue={queue} initialB2B={initial_b2b} initialCombo={initial_combo} b2bEndBonus={b2b_bonus} fileName=output/cover.csv fileType=cover > {ctx.author.id}/ezsfinder.txt"
+      f"node avg_score_ezsfinderversion.js queue={queue} initialB2B={initial_b2b} initialCombo={initial_combo} b2bEndBonus={b2b_bonus} fileName=output/cover.csv fileType=cover > __userdata/{ctx.author.id}/ezsfinder.txt"
     )
-  score = open(f"{ctx.author.id}/ezsfinder.txt").read().splitlines()
+  score = open(f"__userdata/{ctx.author.id}/ezsfinder.txt").read().splitlines()
   printingscores = True
 
   allspecial = "```\n"
@@ -1331,8 +1330,8 @@ async def score(ctx,
         f"**Factoring in pc chance ({score_percentage}%), the average score is {average_score}**"
       )
 
-      remove(f"{ctx.author.id}/ezsfinder.txt")
-      remove(f"{ctx.author.id}/queuefeed.txt")
+      remove(f"__userdata/{ctx.author.id}/ezsfinder.txt")
+      remove(f"__userdata/{ctx.author.id}/queuefeed.txt")
       break
 
 
@@ -1347,17 +1346,17 @@ async def special_minimals(ctx,
 
   sfindercommand = await system(
     ctx,
-    f"java -jar sfinder.jar path -t {fumen} -p {queue} --clear {clear} -K kicks/jstris180.properties --split yes -d 180 -o {ctx.author.id}/path > {ctx.author.id}/ezsfinder.txt"
+    f"java -jar sfinder.jar path -t {fumen} -p {queue} --clear {clear} -K kicks/jstris180.properties --split yes -d 180 -o __userdata/{ctx.author.id}/path > __userdata/{ctx.author.id}/ezsfinder.txt"
   )
 
   if (sfindercommand != 0):
     await ctx.reply(
       "Something went wrong with the sfinder command. Please check for any typoes you might have had."
     )
-    remove(f"{ctx.author.id}/ezsfinder.txt")
+    remove(f"__userdata/{ctx.author.id}/ezsfinder.txt")
     return
 
-  with open(f'{ctx.author.id}/path_unique.html', encoding="utf-8") as f:
+  with open(f'__userdata/{ctx.author.id}/path_unique.html', encoding="utf-8") as f:
     html = f.read()
 
   soup = BeautifulSoup(html, 'html.parser')
@@ -1366,43 +1365,43 @@ async def special_minimals(ctx,
     links.append(link.get('href'))
     allfumen = links[1:]
 
-  with open(f"{ctx.author.id}/coverfield.txt", "w") as file:
+  with open(f"__userdata/{ctx.author.id}/coverfield.txt", "w") as file:
     for i in allfumen:
       file.write(i)
       file.write("\n")
 
-  remove_duplicates(f"{ctx.author.id}/coverfield.txt")
+  remove_duplicates(f"__userdata/{ctx.author.id}/coverfield.txt")
 
   covercommand = await system(
     ctx,
-    f"java -jar sfinder.jar cover -p {queue} -M {minimal_type} -K kicks/jstris180.properties -d 180 -fp {ctx.author.id}/coverfield.txt -o {ctx.author.id}/tempcover.csv> {ctx.author.id}/ezsfinder.txt"
+    f"java -jar sfinder.jar cover -p {queue} -M {minimal_type} -K kicks/jstris180.properties -d 180 -fp __userdata/{ctx.author.id}/coverfield.txt -o __userdata/{ctx.author.id}/tempcover.csv> __userdata/{ctx.author.id}/ezsfinder.txt"
   )
 
   if (covercommand != 0):
     await ctx.reply(
       "Something went wrong with the cover command. Check that the minimal type is a valid one"
     )
-    remove(f"{ctx.author.id}/ezsfinder.txt")
+    remove(f"__userdata/{ctx.author.id}/ezsfinder.txt")
     return
 
   await system(
     ctx,
-    f"python cover-to-path.py --csv-path {ctx.author.id}/tempcover.csv --unglued-fumen-script-path unglueFumen.js > {ctx.author.id}/ezsfinder.txt"
+    f"python cover-to-path.py --csv-path __userdata/{ctx.author.id}/tempcover.csv --unglued-fumen-script-path unglueFumen.js > __userdata/{ctx.author.id}/ezsfinder.txt"
   )
 
   await system(
     ctx,
-    f"npx sfinder-minimal {ctx.author.id}/tempcover_to_path.csv > {ctx.author.id}/ezsfinder.txt"
+    f"npx sfinder-minimal __userdata/{ctx.author.id}/tempcover_to_path.csv > __userdata/{ctx.author.id}/ezsfinder.txt"
   )
-  await system(ctx, f"python true_minimal.py > {ctx.author.id}/ezsfinder.txt")
+  await system(ctx, f"python true_minimal.py > __userdata/{ctx.author.id}/ezsfinder.txt")
   trueminimallink = open(
-    f"{ctx.author.id}/ezsfinder.txt").read().splitlines()[-1]
+    f"__userdata/{ctx.author.id}/ezsfinder.txt").read().splitlines()[-1]
   await ctx.reply(f"Your {minimal_type} minimals are {trueminimallink}")
 
-  #remove(f"{ctx.author.id}/coverfield.txt")
-  #remove(f"{ctx.author.id}/ezsfinder.txt")
-  #remove(f"{ctx.author.id}/tempcover.csv")
-  #remove(f"{ctx.author.id}/tempcover_to_path.csv")
+  #remove(f"__userdata/{ctx.author.id}/coverfield.txt")
+  #remove(f"__userdata/{ctx.author.id}/ezsfinder.txt")
+  #remove(f"__userdata/{ctx.author.id}/tempcover.csv")
+  #remove(f"__userdata/{ctx.author.id}/tempcover_to_path.csv")
 
 
 @bot.command()
@@ -1416,21 +1415,21 @@ async def congruent(ctx, fumen=None, queue=None, blueGarbage=""):
 
   if blueGarbage.upper() == "TRUE":
     await system(
-      ctx, f"node convertalltoblue.js {fumen} > {ctx.author.id}/tempblued.txt")
+      ctx, f"node convertalltoblue.js {fumen} > __userdata/{ctx.author.id}/tempblued.txt")
   else:
     await system(
-      ctx, f"node converttoblue.js {fumen} > {ctx.author.id}/tempblued.txt")
-  blued = open(f"{ctx.author.id}/tempblued.txt").read().replace("\n", "")
+      ctx, f"node converttoblue.js {fumen} > __userdata/{ctx.author.id}/tempblued.txt")
+  blued = open(f"__userdata/{ctx.author.id}/tempblued.txt").read().replace("\n", "")
   blued = encode(blued)
 
   await system(
     ctx,
-    f"java -jar sfinder.jar setup --fill I --tetfu {blued} --patterns {queue} -d 180 -K kicks/tetrio180.properties -fo csv --output {ctx.author.id}/tempsetup.csv > setupoutput.txt 2> {ctx.author.id}/error.txt"
+    f"java -jar sfinder.jar setup --fill I --tetfu {blued} --patterns {queue} -d 180 -K kicks/tetrio180.properties -fo csv --output __userdata/{ctx.author.id}/tempsetup.csv > setupoutput.txt 2> __userdata/{ctx.author.id}/error.txt"
   )
 
   allfumens = [
     i.split(",")[0]
-    for i in open(f"{ctx.author.id}/tempsetup.csv").read().splitlines()[1:]
+    for i in open(f"__userdata/{ctx.author.id}/tempsetup.csv").read().splitlines()[1:]
   ]
 
   if(allfumens == []):
@@ -1439,8 +1438,8 @@ async def congruent(ctx, fumen=None, queue=None, blueGarbage=""):
   
   allfumens = join(allfumens)[0]
   await ctx.reply(make_tiny("https://fumen.zui.jp/?" + allfumens))
-  remove(f"{ctx.author.id}/tempblued.txt")
-  remove(f"{ctx.author.id}/tempsetup.csv")
+  remove(f"__userdata/{ctx.author.id}/tempblued.txt")
+  remove(f"__userdata/{ctx.author.id}/tempsetup.csv")
 
 
 @bot.command()
@@ -1464,7 +1463,7 @@ async def cover(ctx, *, allstuff=None):
 
   covercommand = await system(
     ctx,
-    f'java -jar sfinder.jar cover -t "{fumens}" -p {queue} -K kicks/jstris180.properties -d 180 --output {ctx.author.id}/tempcover.csv > {ctx.author.id}/tempcover.txt'
+    f'java -jar sfinder.jar cover -t "{fumens}" -p {queue} -K kicks/jstris180.properties -d 180 --output __userdata/{ctx.author.id}/tempcover.csv > __userdata/{ctx.author.id}/tempcover.txt'
   )
 
   if (covercommand != 0):
@@ -1475,9 +1474,9 @@ async def cover(ctx, *, allstuff=None):
 
   allqueues = 0
   setupcover = 0
-  failqueues = open(f"{ctx.author.id}/coverfailqueues.txt", "w")
+  failqueues = open(f"__userdata/{ctx.author.id}/coverfailqueues.txt", "w")
 
-  coverfile = open(f"{ctx.author.id}/tempcover.csv").read().splitlines()[1:]
+  coverfile = open(f"__userdata/{ctx.author.id}/tempcover.csv").read().splitlines()[1:]
   for cover in coverfile:
     allqueues += 1
     coverage = cover.split(",")[1:]
@@ -1493,7 +1492,7 @@ async def cover(ctx, *, allstuff=None):
   await ctx.reply(f"The coverage is {setupcover}/{allqueues}")
   if (setupcover != allqueues):
     await ctx.send("Fail queues")
-    await ctx.send(file=discord.File(f"{ctx.author.id}/coverfailqueues.txt"))
+    await ctx.send(file=discord.File(f"__userdata/{ctx.author.id}/coverfailqueues.txt"))
 
 
 @bot.command(aliases=[":3"])
@@ -1516,32 +1515,32 @@ async def saves(ctx, fumen=None, queue=None, clear=4, *, saves=None):
 
   sfindercommand = await system(
     ctx,
-    f"java -jar sfinder.jar path -f csv -k pattern -t {fumen} -p {queue} --clear {clear} -K kicks/jstris180.properties -d 180 --output {ctx.author.id}/temppath.csv > ezsfinder.txt 2> {ctx.author.id}/error.txt"
+    f"java -jar sfinder.jar path -f csv -k pattern -t {fumen} -p {queue} --clear {clear} -K kicks/jstris180.properties -d 180 --output __userdata/{ctx.author.id}/temppath.csv > ezsfinder.txt 2> __userdata/{ctx.author.id}/error.txt"
   )
   if (sfindercommand != 0):
     await ctx.reply(
       "Something went wrong with the sfinder command. Please check for any typoes you might have had.",
-      file=discord.File(f"{ctx.author.id}/error.txt"))
+      file=discord.File(f"__userdata/{ctx.author.id}/error.txt"))
     return
   if (saves == None):
     filtertest = await system(
       ctx,
-      f"python sfinder-saves.py percent -p {queue} -f {ctx.author.id}/temppath.csv -a > {ctx.author.id}/tempsaves.txt 2> {ctx.author.id}/error.txt"
+      f"python sfinder-saves.py percent -p {queue} -f __userdata/{ctx.author.id}/temppath.csv -a > __userdata/{ctx.author.id}/tempsaves.txt 2> __userdata/{ctx.author.id}/error.txt"
     )
   else:
     saves = saves.upper()
     filtertest = await system(
       ctx,
-      f'python sfinder-saves.py percent -p {queue} -f {ctx.author.id}/temppath.csv -w "{saves}" > {ctx.author.id}/tempsaves.txt 2> {ctx.author.id}/error.txt'
+      f'python sfinder-saves.py percent -p {queue} -f __userdata/{ctx.author.id}/temppath.csv -w "{saves}" > __userdata/{ctx.author.id}/tempsaves.txt 2> __userdata/{ctx.author.id}/error.txt'
     )
 
   if (filtertest != 0):
     await ctx.reply(
       "Something went wrong running sfinder-saves.py. It does not take queue input as liberally as sfinder, so make sure to put commas.",
-      file=discord.File(f"{ctx.author.id}/error.txt"))
+      file=discord.File(f"__userdata/{ctx.author.id}/error.txt"))
     return
 
-  output = open(f"{ctx.author.id}/tempsaves.txt").read()
+  output = open(f"__userdata/{ctx.author.id}/tempsaves.txt").read()
   await ctx.reply(output)
 
 
@@ -1601,14 +1600,14 @@ async def score_minimals(ctx,
     await ctx.reply("Please specify a fumen and a queue")
     return
 
-  pathfile = f"{ctx.author.id}/path.csv"
-  holdoutputfile = f"{ctx.author.id}/holdyescover.csv"
-  noholdoutputfile = f"{ctx.author.id}/holdavoidcover.csv"
-  outputfile = f"{ctx.author.id}/scorecover.csv"
-  outputpathfile = f"{ctx.author.id}/scorepath.csv"
-  solutionsfeedfile = f"{ctx.author.id}/solutionsfeed.txt"
-  queuefeedfile = f"{ctx.author.id}/holdreorders.txt"
-  trueminimallink = f"{ctx.author.id}/minimallink.txt"
+  pathfile = f"__userdata/{ctx.author.id}/path.csv"
+  holdoutputfile = f"__userdata/{ctx.author.id}/holdyescover.csv"
+  noholdoutputfile = f"__userdata/{ctx.author.id}/holdavoidcover.csv"
+  outputfile = f"__userdata/{ctx.author.id}/scorecover.csv"
+  outputpathfile = f"__userdata/{ctx.author.id}/scorepath.csv"
+  solutionsfeedfile = f"__userdata/{ctx.author.id}/solutionsfeed.txt"
+  queuefeedfile = f"__userdata/{ctx.author.id}/holdreorders.txt"
+  trueminimallink = f"__userdata/{ctx.author.id}/minimallink.txt"
 
   await system(
     ctx,
@@ -1732,7 +1731,7 @@ async def calibrate(ctx, preset=None):
         + folderpath)
       return
 
-    open(f"{ctx.author.id}/toFumenRGB.json",
+    open(f"__userdata/{ctx.author.id}/toFumenRGB.json",
          'w').write(open(folderpath).read())
     await ctx.reply("Success!")
     return
@@ -1787,7 +1786,7 @@ async def calibrate(ctx, preset=None):
     full = dict()
     full["normal"] = pieces
     full["cleared"] = clearedPieces
-    with open(f"{ctx.author.id}/toFumenRGB.json", 'w') as convert_file:
+    with open(f"__userdata/{ctx.author.id}/toFumenRGB.json", 'w') as convert_file:
       convert_file.write(json.dumps(full))
 
   except Exception:
@@ -1848,13 +1847,13 @@ async def spincover(ctx, fumen = None, queue = None, minimal_type = "TSS"):
     await ctx.reply("The type must be either TSM, TSS, TSD or TST.")
     return
     
-  spinfile = f"{ctx.author.id}/tempspin.csv"
-  queuefeedfile = f"{ctx.author.id}/tempfield.txt"
-  coverfile = f"{ctx.author.id}/cover.csv"
-  coveroutputfile = f"{ctx.author.id}/ezsfinder.txt"
-  covertopathfile = f"{ctx.author.id}/cover-to-path.csv"
-  tempfile = f"{ctx.author.id}/ezsfinder.txt"
-  errorfile = f"{ctx.author.id}/error.txt"
+  spinfile = f"__userdata/{ctx.author.id}/tempspin.csv"
+  queuefeedfile = f"__userdata/{ctx.author.id}/tempfield.txt"
+  coverfile = f"__userdata/{ctx.author.id}/cover.csv"
+  coveroutputfile = f"__userdata/{ctx.author.id}/ezsfinder.txt"
+  covertopathfile = f"__userdata/{ctx.author.id}/cover-to-path.csv"
+  tempfile = f"__userdata/{ctx.author.id}/ezsfinder.txt"
+  errorfile = f"__userdata/{ctx.author.id}/error.txt"
 
   spincommand = await system(ctx, f"java -jar sfinder.jar spin -t {fumen} -p {queue} --format csv --split yes -o {spinfile} -c {tspintypes[minimal_type.upper()]} > {tempfile} 2> {errorfile}")
 
@@ -1930,13 +1929,13 @@ async def setupcover(ctx, fumen = None, queue = None, second_queue = None, minim
     await ctx.reply("Please provide a cover queue")
     return
     
-  spinfile = f"{ctx.author.id}/tempspin.csv"
-  queuefeedfile = f"{ctx.author.id}/tempfield.txt"
-  coverfile = f"{ctx.author.id}/cover.csv"
-  coveroutputfile = f"{ctx.author.id}/ezsfinder.txt"
-  covertopathfile = f"{ctx.author.id}/cover-to-path.csv"
-  tempfile = f"{ctx.author.id}/ezsfinder.txt"
-  errorfile = f"{ctx.author.id}/error.txt"
+  spinfile = f"__userdata/{ctx.author.id}/tempspin.csv"
+  queuefeedfile = f"__userdata/{ctx.author.id}/tempfield.txt"
+  coverfile = f"__userdata/{ctx.author.id}/cover.csv"
+  coveroutputfile = f"__userdata/{ctx.author.id}/ezsfinder.txt"
+  covertopathfile = f"__userdata/{ctx.author.id}/cover-to-path.csv"
+  tempfile = f"__userdata/{ctx.author.id}/ezsfinder.txt"
+  errorfile = f"__userdata/{ctx.author.id}/error.txt"
 
   spincommand = await system(ctx, f"java -jar sfinder.jar setup -t {fumen} -p {queue} --format csv --split yes -o {spinfile} --fill {fill} --margin {margin} --exclude {exclude} > {tempfile} 2> {errorfile} ")
   spins = open(spinfile, encoding = "utf-8").read().splitlines()
