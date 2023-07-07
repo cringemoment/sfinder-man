@@ -18,7 +18,7 @@ import asyncio
 import json
 import re
 
-print("test")
+print("sdsdadasd")
 
 keep_alive()
 bot_token = environ["bot_token"]
@@ -57,7 +57,7 @@ async def system(ctx, command):
       )  # Remove the process information from the list of running commands
     except ValueError:
       raise commandKilled("Someone killed your command already!")
-      
+
   return process.returncode
 
 
@@ -845,7 +845,7 @@ async def minimals(ctx, fumen=None, queue=None, clear=4, saves=None):
   elif (queue == None):
     await ctx.reply("Please provide a queue")
     return
-    
+
   if (saves == None or saves.upper() == "ALL"):
     pathtest = await system(
       ctx,
@@ -1437,7 +1437,7 @@ async def congruent(ctx, fumen=None, queue=None, blueGarbage=""):
   if(allfumens == []):
     await ctx.reply("Looks like there were no congruents. If all the blocks are garbage, make sure to enable the garbage parameter.")
     return
-  
+
   allfumens = join(allfumens)[0]
   await ctx.reply(make_tiny("https://fumen.zui.jp/?" + allfumens))
   remove(f"__userdata/{ctx.author.id}/tempblued.txt")
@@ -1803,7 +1803,7 @@ async def currentcommands(ctx):
   if not running_commands:
     await ctx.reply("No commands are running right now")
     return
-  
+
   message = "```\n"
   for i in running_commands:
     message += f"{i['user']}: " + i["name"] + "\n"
@@ -1848,7 +1848,7 @@ async def spincover(ctx, fumen = None, queue = None, minimal_type = "TSS"):
     print(minimal_type.upper())
     await ctx.reply("The type must be either TSM, TSS, TSD or TST.")
     return
-    
+
   spinfile = f"__userdata/{ctx.author.id}/tempspin.csv"
   queuefeedfile = f"__userdata/{ctx.author.id}/tempfield.txt"
   coverfile = f"__userdata/{ctx.author.id}/cover.csv"
@@ -1865,7 +1865,7 @@ async def spincover(ctx, fumen = None, queue = None, minimal_type = "TSS"):
     )
     await ctx.reply(file=discord.File(errorfile))
     return
-  
+
   spins = open(spinfile, encoding = "utf-8").read().splitlines()
   allspins = ""
   for spin in spins[1:]:
@@ -1884,7 +1884,7 @@ async def spincover(ctx, fumen = None, queue = None, minimal_type = "TSS"):
     return
 
   output = ""
-  
+
   setupandcover = []
   coveroutput = open(coveroutputfile).read().splitlines()
   for i in coveroutput:
@@ -1930,7 +1930,7 @@ async def setupcover(ctx, fumen = None, queue = None, second_queue = None, minim
   elif (second_queue == None):
     await ctx.reply("Please provide a cover queue")
     return
-    
+
   spinfile = f"__userdata/{ctx.author.id}/tempspin.csv"
   queuefeedfile = f"__userdata/{ctx.author.id}/tempfield.txt"
   coverfile = f"__userdata/{ctx.author.id}/cover.csv"
@@ -1948,7 +1948,7 @@ async def setupcover(ctx, fumen = None, queue = None, second_queue = None, minim
     )
     await ctx.reply(file=discord.File(errorfile))
     return
-  
+
   allspins = ""
   for spin in spins[1:]:
     spin = spin.split(",")
@@ -1966,7 +1966,7 @@ async def setupcover(ctx, fumen = None, queue = None, second_queue = None, minim
     return
 
   output = ""
-  
+
   setupandcover = []
   coveroutput = open(coveroutputfile).read().splitlines()
   for i in coveroutput:
