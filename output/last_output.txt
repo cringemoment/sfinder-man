@@ -1,8 +1,8 @@
 # Setup Field
 XXXXXX____
+XXXXX_____
 XXXXXXX___
-XXXXXXXX__
-XXXXXXX___
+XXXXXX____
 
 # Initialize / User-defined
 Max clear lines: 4
@@ -10,29 +10,29 @@ Using hold: use
 Kicks: kicks/jstris180.properties
 Drop: softdrop180
 Searching patterns:
-  L[ISZ]!
+  ZL[IOT]!
 
 # Initialize / System
 Version = 1.42
 Threads = 1
-Need Pieces = 3
+Need Pieces = 4
 
 # Enumerate pieces
-Piece pop count = 4
+Piece pop count = 5
 
 # Cache
   -> Stopwatch start
      ... done
-  -> Stopwatch stop : avg.time = 265 ms [1 counts]
+  -> Stopwatch stop : avg.time = 38 ms [1 counts]
 
 # Search
   -> Stopwatch start
      ... searching
      ... done
-  -> Stopwatch stop : avg.time = 1492 ms [1 counts]
+  -> Stopwatch stop : avg.time = 2107 ms [1 counts]
 
 # Output file
-Found path = 3
+Found path = 2
 
 perfect clear percent
   -> success = 100.00% (6/6)

@@ -1,1 +1,15 @@
 /venv/
+
+# ignoring all userdata and sfinder output
+
+__userdata/
+commandlog.txt
+error.txt
+ezsfinder.txt
+queuefeed.txt
+setupoutput.txt
+sfinder_minimal_bruh.txt
+percent
+score
+trueminimaloutput.txt
+.cache/
