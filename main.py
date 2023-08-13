@@ -17,8 +17,14 @@ from datetime import datetime
 import asyncio
 import json
 import re
-
-import random #haha get it because it's random
+from marfungextended import extendPieces
+import random
+import matplotlib.pyplot as plt
+import contextlib
+from urllib.parse import urlencode
+from urllib.request import urlopen
+from replit import db
+import csv
 
 keep_alive()
 bot_token = environ["bot_token"]
@@ -27,8 +33,79 @@ bot_token = environ["bot_token"]
 class sfindercommandtooslow(Exception):
   pass
 
+
 class commandKilled(Exception):
   pass
+
+
+newslettergroup = [
+  344936089204817930, 601328314203766784, 554411603609518095,
+  696811705619054633, 592099842734555174, 395426519331373067,
+  461298560416219148, 803050948695556117
+]
+
+
+def bot_admin(ctx):  # i cba to keep copy pasting this
+  return (ctx.author.id == 717451031897833512  # epic
+          or ctx.author.id == 696811705619054633)  # cringemoment
+
+
+cash = []  # [uid:money]
+
+
+class Command():  # NOTE: DO NOT USE IN DMS
+  # also cringemoment if you know how to reply without ctx please tell me :D
+
+  def __init__(self, ctx):
+    self.a_ctx = ctx  # author ctx
+    self.pass_bets = []  # [uid:money]
+    self.fail_bets = []  # [uid:money]
+
+  async def addBet(ctx, amount, bet):
+    if ctx.guild == None or ctx.author.id == a_ctx.author.id:  # if better is author
+      await ctx.reply("You can't bet on your own command. Fuck you.")
+
+    if (amount <= cash[ctx.author.id]):
+      if bet.lower == "fail" or (bet.lower == "nuhuh" and bot_admin(ctx)):
+        fail_bets[ctx.author.id] += amount
+        cash[ctx.author.id] -= amount
+      elif bet.lower == "pass":
+        pass_bets[ctx.author.id] += amount
+        cash[ctx.author.id] -= amount
+      else:
+        ctx.reply(
+          "Use \"pass\" to bet for the command to finish and \"fail\" to bet for it failing."
+        )
+      await ctx.reply("Success!")
+    else:
+      await ctx.reply(
+        "**What is gambling addiction and problem gambling?**\n\nGambling problems can happen to anyone from any walk of life. Your gambling goes from a fun, harmless diversion to an unhealthy obsession with serious consequences. Whether you bet on sports, scratch cards, roulette, poker, or slots—in a casino, at the track, or online—a gambling problem can strain your relationships, interfere with work, and lead to financial disaster. You may even do things you never thought you would, like running up huge debts or even stealing money to gamble.\n\nGambling addiction—also known as pathological gambling, compulsive gambling or gambling disorder—is an impulse-control disorder. If you're a compulsive gambler, you can't control the impulse to gamble, even when it has negative consequences for you or your loved ones. You'll gamble whether you're up or down, broke or flush, and you'll keep gambling regardless of the consequences—even when you know that the odds are against you or you can't afford to lose.\n\nOf course, you can also have a gambling problem without being totally out of control. Problem gambling is any gambling behavior that disrupts your life. If you're preoccupied with gambling, spending more and more time and money on it, chasing losses, or gambling despite serious consequences in your life, you have a gambling problem"
+      )  # develish
+
+  async def resolve(passed):
+    message = None
+    if passed:
+      message = "Command Finished!\n\n"
+      winners = pass_bets
+      losers = fail_bets
+    else:
+      message = "Command Bailed...\n\n"
+      winners = fail_bets
+      losers = pass_bets
+
+    if winners:
+      message += "Winners:\n"
+      for uid, bet in winners:
+        message += f"<@!{uid}> - +${bet}\n"
+      message += "\n"
+
+    if losers:
+      message += "Losers:\n"
+      for uid, bet in winners:
+        message += f"<@!{uid}> - +${bet}\n"
+
+    a_ctx.reply(message)
+
 
 running_commands = []
 
@@ -61,17 +138,53 @@ async def system(ctx, command):
   return process.returncode
 
 
+with open("prefixes.json") as p:
+  prefixes = json.load(p)
+
+default_prefix = ">"
+
+
+def prefix(bot, message):
+  if (message.guild == None):
+    id = message.author.id
+  else:
+    id = message.guild.id
+  return prefixes.get(f"{id}", default_prefix)
+
+
 intents = discord.Intents.default()
 intents.message_content = True
 intents.presences = True
-
-prefix = '>'
-
 bot = commands.Bot(command_prefix=prefix, intents=intents, help_command=None)
 
 
 @bot.command()
+async def change_prefix(ctx, prefix=None):
+  if not (bot_admin(ctx) or ctx.guild == None or ctx.permissions.manage_guild):
+    await ctx.reply("Not authorized")
+  if prefix == None:
+    await ctx.reply("Please add a prefix")
+    return
+
+  if (ctx.guild == None):
+    id = ctx.author.id
+  else:
+    id = ctx.guild.id
+  prefixes[f"{id}"] = prefix
+  with open("prefixes.json", 'w') as p:
+    p.write(json.dumps(prefixes))
+
+  await ctx.reply("Success!")
+
+
+@bot.command(aliases=["command", "commands"])
 async def help(ctx, command=None):
+  if not ctx.guild == None:
+    id = ctx.guild.id
+  else:
+    id = ctx.author.id
+  p = prefixes.get(f"{id}", default_prefix)  # prefix
+
   if command is None:
     embed = discord.Embed(
       title="Sfinder Bot Help Guide",
@@ -80,29 +193,31 @@ async def help(ctx, command=None):
     embed.add_field(
       name="__Sfinder Commands__",
       value=
-      "`>sfinder`\n`>getmyfolder`\n`>getoutputfile`\n`>getallsolutions`\n`>uploadfile`\n`>deletefile`",
+      f"`{p}sfinder`\n`{p}getmyfolder`\n`{p}getoutputfile`\n`{p}getallsolutions`\n`{p}uploadfile`\n`{p}deletefile`",
       inline=True)
     embed.add_field(
       name="__Additional Research__",
-      value= "`>chance`\n`>minimals`\n`>special_minimals`\n`>score_minimals`\n`>score`\n`>congruent`\n`>cover`\n`>saves`\n`>parity`\n`>spincover`\n`>setupcover`",
+      value=
+      f"`{p}chance`\n`{p}minimals`\n`{p}special_minimals`\n`{p}score_minimals`\n`{p}score`\n`{p}congruent`\n`{p}cover`\n`{p}saves`\n`{p}parity`\n`{p}spincover`\n`{p}setupcover`\n`{p}congruent_cover`\n`{p}pc_setup`\n`{p}setup_cover`",
       inline=True)
     embed.add_field(
       name="__Additional tools__",
       value=
-      "`>bestsetup`\n`>bestsave`\n`>cat_finder`\n`>dpcfinder`\n`>catimage`\n`>imageofacat`\n`>tofumen`\n`>calibrate`",
+      f"`{p}bestsetup`\n`{p}bestsave`\n`{p}cat_finder`\n`{p}dpcfinder`\n`{p}catimage`\n`{p}imageofacat`\n`{p}tofumen`\n`{p}calibrate`",
       inline=True)
     embed.add_field(name="__Bot tools__",
-                    value="`>currentcommands`\n`>killmyprocesses`",
+                    value=f"`{p}currentcommands`\n`{p}killmyprocesses`",
                     inline=True)
     embed.add_field(
       name="",
-      value="For additional help with command format, do `>help command_help`",
+      value=
+      f"For additional help with command format, do `{p}help command_help`\nFor very important things to know about this bot, read `{p}help bot`",
       inline=True)
   else:
     if command == "sfinder":
-      description = "This is the exact same thing as normal sfinder, but instead of using java -jar sfinder.jar just use `>sfinder`. For additional help with sfinder commands, check https://hsterts.github.io/h-docs/sfinder/."
+      description = "This is the exact same thing as normal sfinder, but instead of using java -jar sfinder.jar just use `>sfinder`. For additional help with sfinder commands, check [this](https://hsterts.github.io/h-docs/sfinder/).\nNote: This command works with [marfung's extended pieces](https://github.com/Marfung37/ExtendedSfinderPieces/)!. Use -mep instead of -p, and no spaces for the arg."
       format = "Command format: `>sfinder`"
-      example = "Example: `>sfinder path -t v115@9gC8EeE8DeF8CeG8DeC8JeAgH -p I,*p4`"
+      example = "Example: `>sfinder path -t v115@9gC8EeE8DeF8CeG8DeC8JeAgH -mep I,*p4{S<Z}`"
     elif command == "getmyfolder":
       description = "This bot creates a folder for you, to save all the sfinder output into. You can look inside your folder here."
       format = "Command format: `>getmyfolder`"
@@ -126,7 +241,7 @@ async def help(ctx, command=None):
     elif command == "minimals":
       description = "Gets you the minimals, or the minimum amount of solutions needed to get a setup to maximum solve rate, in a tinyurl fumen. The saves parameter allows you to get minimal sets for any pieces saved. Put the parameters side by side, seperated with `||`. (For the people who know, it's Marfung's sfinder-saves.py). If you wanted save O, put `O`. If you want save S or save Z, put `S||Z`."
       format = "Command format: `>minimals {fumen} {queue} {clear=4} {saves = all}`"
-      example = "Example: `>minimals v115@9gC8EeE8DeF8CeG8DeC8JeAgH I,*p4 4 O`"
+      example = "Example: `>minimals v115@9gC8EeE8DeF8CeG8DeC8JeAgH I,*p4 4 LOSZ||JOSZ`"
     elif command == "score":
       description = "Gets you the average score for a setup. Very clunky, and you have to specify everything in order.\n The intial_b2b tells the bot if you start with b2b (useful for dpc), the b2b_bonus tells the bot how many extra points b2b is effectively worth (if you're going into dpc, set the bonus to 600 as the tsd will be worth 600 more points with b2b). The initial combo gives you "
       format = "Command format: `>score {fumen} {queue} {clear=4} {initial_b2b=false} {b2b_bonus=0} {initial_combo=0}`"
@@ -156,9 +271,9 @@ async def help(ctx, command=None):
       format = "Command format: `>dpcfinder {queue}`"
       example = "Example: `>dpcfinder IOSZJLT`"
     elif command == "cover":
-      description = "Takes in multiple fumens and a queue, and gets the cover of the setups. Essentially the same as sfinder's cover command"
-      format = "Command format: `>cover {fumen} {fumen} {fumen} {queue}`"
-      example = "Example: `>cover http://fumen.zui.jp/?v115@BhilFeAtglR4Beg0RpBtR4Ceg0RpAtzhAeh0JeAgWG?AKN8LCvXBAA http://fumen.zui.jp/?v115@BhR4AtFeR4BtBeg0RpilAtCeg0RpglzhAeh0JeAgWG?AqHMMCvCBAA *p7`"
+      description = "Takes in a fumen (attach multiple fields as diffferent pages) and a queue, and gets the cover of the setups. This glues each page in the given fumen. Optionally add --mode and --mirror from sfinder."
+      format = "Command format: `>cover {fumen} {queue} {mode=normal} {mirror=no}`"
+      example = "Example: `>cover v115@9gwhQ4HewhR4DewwBewhg0Q4AeBtxwRpwhi0AeBtww?RpJeAgH0gAtHeQpwSGewhQphWwwCewSglwhglwSgWQ4Qpgl?xhQagWglwSxhAeBPwhQagWJeAgH *p7 tss yes`"
     elif command == "congruent":
       description = "Takes in a fumen and a queue, and finds all the way to build a setup. Optional parameter to treat garbage blocks as pieces. Useful for followups."
       format = "Command format: `>congruent {fumen} {queue} {garbageCongruents = false}`"
@@ -211,9 +326,52 @@ async def help(ctx, command=None):
       description = "It's like sfinder-recursive, but better! Provided queues for setup and cover along with a fumen, it'll get the cover data, and then the cover to path minimals. You can optionally include --mode for cover, --exclude for cover, the fill color and the margin color."
       format = "Command format: `>setupcover {fumen} {setup_queue} {cover_queue} {minimal_type=normal} {exclude=none} {fill=I} {margin=O}`"
       example = "Example: `>setupcover v115@zgWpBeXpBeVpxhBe2hCe3hAexhJeAgH [IOSZJL]p6, *p7 normal strict-holes I O`"
+    elif command == "congruent_cover":
+      description = "Takes in one fumen, finds all of its congruents, and puts finds theie combined cover. Optional parameters to add sfinder --mode and --mirror along treating garbage as pieces"
+      format = "Command format: `>congruent_cover {fumen} {queue} {mode=normal} {mirror=no} {garbage_congruents=false}`"
+      example = "Example: `>congruent_cover v115@+gR4GeR4BtCeRpg0ilBtAewwRpg0glzhywh0JeAgH *p7 tsm yes false`"
+    elif command == "bot":
+      embed = discord.Embed(title="Important Things to Know About sfinder Man",
+                            color=discord.Color.blue())
+      embed.add_field(
+        name="Privacy",
+        value=
+        "Obviously I take this stuff very seriously. Sfinder man has the capabilities to read messages and server names, so if it's in any private servers I reccomend making it so that it can't read anything outside of one channel. This information is not released to anyone outside bot developers.\nAll sfinder man files are open source. Do not upload sensitive stuff to your folders!!!!!!",
+        inline=False)
+      embed.add_field(
+        name="Bot Specs",
+        value=
+        "Bot runs on replit free tier :sweat:, so it's not the fastest thing ever. Don't try to run big stuff on it, there's a good chance it will crash.\nAll sfinder man commands use jstris180.properties for the rotation table. If you want tetrio180 kicks, you can specify in the sfinder command, but otherwise you're stuck with jstris180.",
+        inline=False)
+      await ctx.reply(embed=embed)
+      return
+    elif command == "change_prefix":
+      description = "Change the prefix of the bot. Only accessible with \"Manage Server\" permissions or in DMs."
+      format = "Command format: `>change_prefix {prefix}`"
+      example = "Example: `>change_prefix \"boykisser \"`"
+    elif command == "blacklist_command":
+      description = "Bans the command from the server. Only accessible with \"Manage Server\" permissions. Not allowed in DMs."
+      format = "Command format: `>blacklist_command {command}`"
+      example = "Example: `>blacklist catgirl`"
+    elif command == "special_cover":
+      description = "Gets you the coverage for getting a certain type of spin. The default type, tss, gets you the minimum set to maximize tss+ chance."
+      format = "Command format: `>special_cover {fumen} {queue} {clear=4} {minimal_type=tss}`"
+      example = "Example: `>special_cover v115@9gC8EeE8DeF8CeG8DeC8JeAgH I,*p4 4 tetris`"
+    elif command == "cover_percent":
+      description = "Gets you the coverage and percent for multiple fields. Optionally include a minimal type (-M) for the setup."
+      format = "Command format: `>cover_percent {fumens} {cover_queue} {percent_queue} {clear=4} {minimal_type=tss}`"
+      example = "Example: `>cp v115@GhwwHexwg0FeBtwwi0AezhBtJeAgHBhwwDeAPCexwC?eQLAPBeBtwwBeCPCeAtQpSaAPwSJeAgH9gwhCeQLDeAtwhB?eRLCewwAtQLAeBPQLg0AeCtQLhHBPi0AtQpJeAgH9gQaDew?wCeQLwwCexwBeRLwwh0BtQaAeBPQLAeyhAtgWhHBPJeAgHC?hQLHeRLwwIewwIewwMeAgH9gBtIeBtAewwAeQLFexhRLGew?hAPQLMeAgHLhQLDewwCeRLCexwDeQLDewwJeAgH9gwSAPHe?QLIeQLAegWAtGeywPeAgH [IJTZ]! *p7 4 normal `"
+    elif command == "pc_setup":
+      description = "This is the exact same thing as [Theo's setup-finder!](https://github.com/Theoluky/setup-finder/releases).\n\nThis command tends to take a while. Use -sp to provide the setup queue and -p for the percent queue. To speed up the process, use either -co to provide a cutoff percentage (from 0 to 1) for returned setups and -bksf for the best known chance field."
+      format = "Command format: `>pcsetup {parameters}`"
+      example = "Example: `>pcsetup -sp SZSZ -p *! -d 180 -bksf v115@/gDtGeDtGeT4EeT4MeAgH`"
     else:
       await ctx.send(f"I don't think {command} is a command :3")
       return
+
+    description = description.replace(">", p)
+    format = format.replace(">", p)
+    example = example.replace(">", p)
 
     embed = discord.Embed(title=f"Sfinder Bot Help: {command.capitalize()}",
                           description=description,
@@ -224,14 +382,19 @@ async def help(ctx, command=None):
   embed.add_field(
     name="",
     value=
-    "Check out https://github.com/cringemoment/ezsfinder ! It's like this bot but better!",
+    "Check out [ezsfinder](https://github.com/cringemoment/ezsfinder)! It's like this bot but better!",
     inline=True)
   await ctx.reply(embed=embed)
 
 
 @bot.event
 async def on_ready():
-  await bot.change_presence(activity=discord.Game(name="sfinder.jar"))
+  botactivity = discord.Game(
+    name="sfinder.jar",
+    type=discord.ActivityType.playing,
+  )
+  await bot.change_presence(activity=botactivity, status=discord.Status.online)
+
   print(f'Logged in as {bot.user.name}')
 
 
@@ -258,31 +421,66 @@ async def on_command_error(ctx, error):
       f"One of the parameters is wrong. A common error is trying to do `clear=4`, when it should be `4`. The bot is trying to convert something to something else and it's breaking. Specifically, {error}"
     )
   elif isinstance(error, commands.errors.CommandNotFound):
-    await ctx.reply(f"I don't think {ctx.invoked_with} is a command :3")
+    await ctx.message.remove_reaction("<a:boykisser_jumpscare:1131246599113289849>", bot.user)
+    await ctx.message.add_reaction("<:not_a_command:1138319992723607572>")
+    return
+  elif isinstance(error, commands.CheckFailure):
+    await ctx.send("The command you're trying to run is banned in this server!", file=discord.File(f"boykisser_1984.png"), reference=ctx.message)
   elif hasattr(error, "original") and isinstance(error.original,
                                                  sfindercommandtooslow):
     await ctx.reply(
       "The command has lasted more than 3 minutes. To prevent hogging the cpu, the bot has turned your command off. If you really need to run it and can't run it on a computer, message cringemoment and ill make an exception."
     )
   else:
+    current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     if (hasattr(error, "original")):
       await ctx.reply(
-        f"Uh oh, an error just occured. pls go and tell cringemoment. The error is: {error.original}"
+        f"Uh oh, an error just occured. pls go and tell epicgamer. The error is: {error.original}"
       )
+      logging_message = f"{current_time} - {ctx.author.name} ({ctx.author.id}) ran error in \"{ctx.guild}\": `{ctx.message.content}`\nError was: {error.original}\n Jump url: {ctx.message.jump_url}"
     else:
       await ctx.reply(
-        f"Uh oh, an error just occured. pls go and tell cringemoment. The error is: {type(error)}, {error}"
+        f"Uh oh, an error just occured. pls go and tell epicgamer. The error is: {type(error)}, {error}"
       )
+      logging_message = f"{current_time} - {ctx.author.name} ({ctx.author.id}) ran error in \"{ctx.guild}\": `{ctx.message.content}`\nError was: {type(error)}, {error}\n Jump url: {ctx.message.jump_url}"
+
+    webhook = os.environ['error_webhook']
+    requests.post(webhook, json={"content": logging_message})
 
 
 @bot.event
 async def on_message(message):
   if message.author == bot.user:
     return
-  if message.author.id == 308779860346798090:
+
+  if message.guild == None:
+    id = message.author.id
+  else:
+    id = message.guild.id
+  prefix = prefixes.get(f"{id}", default_prefix)
+
+  if f"<@{bot.user.id}>" in message.content:
+    await message.channel.send(
+      f"Prefix is `{prefix}` :3! Run `{prefix}help` or `{prefix}commands` for a list of all commands!"
+    )
     return
-  if message.content.startswith(">") and not message.content[1] == " ":
-    folder_path = str(message.author.id)
+
+  if not message.content.startswith(prefix):
+    return
+  
+  if message.content.startswith(prefix) and not message.content[1] == " ":
+
+    if f"blacklist{message.author.id}" in db.keys():
+      boykissers = [
+        "https://tenor.com/view/i-know-what-you-are-boykisser-ominous-stare-gif-1854943194524266546",
+        "https://tenor.com/view/girl-boy-kisser-gif-11783875655224553370",
+        "https://cdn.discordapp.com/attachments/1021103147097280544/1137235559954268233/IMG_2808.png",
+        "  https://tenor.com/view/boykisser-meme-gif-6685457771534397088"
+      ]
+      await message.channel.send(random.choice(boykissers), reference=message)
+      return
+
+    folder_path = "__userdata/" + str(message.author.id)
     if not path.exists(folder_path):
       makedirs(folder_path)
     else:
@@ -296,13 +494,41 @@ async def on_message(message):
     # Get the current timestamp
     current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-    # Log the command with timestamp in commandlog.txt
-    with open("commandlog.txt", "a") as log_file:
-      log_file.write(
-        f"{current_time} - {message.author.name} ran command: {message.content}\n"
-      )
+    # Log the command with timestamp in commandlog.txt (commented out)
 
-    await message.add_reaction("✅")
+    # with open("commandlog.txt", "a") as log_file:
+    #   log_file.write(
+    #     f"{current_time} - {message.author.name} ran command: {message.content}\n"
+    #   )
+
+    logging_message = f"{current_time} - {message.author.name} ({message.author.id}) ran command in \"{message.guild}\": `{message.content}`\n\n Jump url: {message.jump_url}"
+    webhook = os.environ['logging_webhook']
+
+    requests.post(webhook, json={"content": logging_message})
+
+    await message.add_reaction("<a:boykisser_jumpscare:1131246599113289849>")
+
+  message.content = message.content.replace(
+    "myfolder/", f"__userdata/{message.author.id}/")
+
+  if ">sfinder" in message.content and "-mep" in message.content:
+    args = message.content.split(" ")
+    mepindex = args.index("-mep")
+    if mepindex + 1 == len(args):
+      await message.channel.send(
+        "Please provide a queue for the marfung extended pieces")
+      return
+
+    mepqueue = extendPieces([args[mepindex + 1]])
+    with open(f"__userdata/{message.author.id}/tempextended.txt",
+              "w") as extendedfile:
+      accum = ""
+      for i in mepqueue:
+        accum += i + "\n"
+      extendedfile.write(accum)
+    args[mepindex] = "-fp"
+    args[mepindex + 1] = f"__userdata/{message.author.id}/tempextended.txt"
+    message.content = " ".join(args)
 
   await bot.process_commands(message)
 
@@ -314,7 +540,7 @@ async def hello(ctx):
 
 @bot.command()
 async def shutdown(ctx):
-  if ctx.author.id == 696811705619054633 or ctx.author.id == 717451031897833512:
+  if bot_admin(ctx):
     await ctx.reply('Shutting down...')
     await bot.close()
   else:
@@ -325,7 +551,7 @@ async def shutdown(ctx):
 async def purge_folders(ctx):
   user_id = ctx.author.id
 
-  if user_id == 696811705619054633:
+  if bot_admin(ctx):
     folder_path = getcwd()
     for folder_name in listdir(folder_path):
       folder_to_delete = path.join(folder_path, folder_name)
@@ -351,8 +577,11 @@ async def sfinder(ctx, command_type=None, *, parameters=None):
   elif parameters is None:
     await ctx.reply("Parameters are missing, please set some.")
   elif "-o" in parameters:
+    await ctx.reply(
+      "I'm sorry, but the -o flag messes with the bot. Please don't use it.")
     bot.get_command("sfinder").reset_cooldown(ctx)
     return
+  elif "-lp" in parameters or "--log-path" in parameters:
     await ctx.reply(
       "I'm sorry, but the -o flag messes with the bot. Please don't use it.")
     bot.get_command("sfinder").reset_cooldown(ctx)
@@ -360,8 +589,8 @@ async def sfinder(ctx, command_type=None, *, parameters=None):
   else:
     command_type = command_type.replace('>', "")
     parameters = parameters.replace('>', "")
-    output_filename = f"{ctx.author.id}_sfinderoutput.txt"
-    error_filename = f"{ctx.author.id}_sfindererror.txt"
+    output_filename = f"__userdata/{ctx.author.id}/sfinderoutput.txt"
+    error_filename = f"__userdata/{ctx.author.id}/sfindererror.txt"
 
     if command_type == "percent":
       lastcommand = await system(
@@ -411,8 +640,8 @@ async def sfinder(ctx, command_type=None, *, parameters=None):
       await ctx.reply(file=discord.File(output_filename))
 
     # Delete the output file
-    remove(output_filename)
     remove(error_filename)
+    remove(output_filename) 
 
     # Clean up after cooldown period
     if ctx.guild is None:
@@ -420,9 +649,11 @@ async def sfinder(ctx, command_type=None, *, parameters=None):
 
 
 @bot.command()
-async def getoutputfile(ctx, *, filename):
+async def getoutputfile(ctx, filename, user_id=None):
+  if (user_id == None):
+    user_id = ctx.author.id
   filename = filename.replace("/", "")
-  file_path = f"__userdata/{ctx.author.id}/{filename}"
+  file_path = f"__userdata/{user_id}/{filename}"
 
   if path.isfile(file_path):
     with open(file_path, "rb") as file:
@@ -442,7 +673,7 @@ async def uploadfile(ctx):
     return
 
   file = ctx.message.attachments[0]
-  if file.size > filesizelimit:  # 500 KB in bytes
+  if file.size > filesizelimit:  # 200 KB in bytes
     await ctx.reply(f"File size exceeds the limit of {filesizelimit[:-3]} KB.")
     return
 
@@ -485,8 +716,9 @@ async def deletefile(ctx, name=None):
 
 
 @bot.command()
-async def getmyfolder(ctx):
-  user_id = str(ctx.author.id)
+async def getmyfolder(ctx, user_id=None):
+  if (user_id == None):
+    user_id = str(ctx.author.id)
   folder_path = f"__userdata/{user_id}"
 
   if not path.exists(folder_path):
@@ -500,15 +732,6 @@ async def getmyfolder(ctx):
 
 
 def make_tiny(url):
-  import contextlib
-
-  try:
-    from urllib.parse import urlencode
-
-  except ImportError:
-    from urllib import urlencode
-  from urllib.request import urlopen
-
   request_url = ('http://tinyurl.com/api-create.php?' +
                  urlencode({'url': url}))
   with contextlib.closing(urlopen(request_url)) as response:
@@ -516,12 +739,14 @@ def make_tiny(url):
 
 
 @bot.command()
-async def getallsolutions(ctx, *, file_name):
+async def getallsolutions(ctx, file_name, user_id=None):
+  if (user_id == None):
+    user_id = ctx.author.id
   file_name = file_name.strip(";/")
   await ctx.reply(
     "Note: This does not work with spin.html, if someone actually used it.")
 
-  file_path = f"__userdata/{ctx.author.id}/{file_name}"
+  file_path = f"__userdata/{user_id}/{file_name}"
 
   if not path.isfile(file_path):
     await ctx.reply("File not found.")
@@ -797,7 +1022,8 @@ async def cat_finder(ctx,
       ctx,
       f"node best_score.js initialB2B={fedb2b} initialCombo={combo} queue={allpieces} b2bEndBonus={b2bendbonus} fileName={outputpathfile} > __userdata/{ctx.author.id}/ezsfinder.txt"
     )
-    bestsolve = open(f"__userdata/{ctx.author.id}/ezsfinder.txt").read().splitlines()
+    bestsolve = open(
+      f"__userdata/{ctx.author.id}/ezsfinder.txt").read().splitlines()
     for i in bestsolve:
       await ctx.reply(i)
 
@@ -816,25 +1042,42 @@ async def cat_finder(ctx,
 async def chance(ctx, fumen=None, queue=None, clear=4):
   if (fumen == None):
     await ctx.reply("Please provide a fumen")
+    return
   elif (queue == None):
     await ctx.reply("Please provide a queue")
-  else:
-    pathtest = await system(
-      ctx,
-      f"java -jar sfinder.jar percent --tetfu {fumen} --patterns {queue} --clear {clear} -K kicks/jstris180.properties -d 180 > __userdata/{ctx.author.id}/ezsfinder.txt 2> error.txt"
+    return
+  pathtest = await system(
+    ctx,
+    f"java -jar sfinder.jar percent --tetfu {fumen} --patterns {queue} --clear {clear} -K kicks/jstris180.properties -d 180 -fc -1 > __userdata/{ctx.author.id}/ezsfinder.txt 2> error.txt"
+  )
+  if (pathtest != 0):
+    await ctx.reply(
+      "Something went wrong with the sfinder command. Please check for any typoes you might have had."
     )
-    if (pathtest != 0):
-      await ctx.reply(
-        "Something went wrong with the sfinder command. Please check for any typoes you might have had."
-      )
-      await ctx.reply(file=discord.File("error.txt"))
-      bot.get_command("sfinder").reset_cooldown(ctx)
-      return
-    output = open(f"__userdata/{ctx.author.id}/ezsfinder.txt").read()
-    solverate = (output[output.find("success"):output.find("success") +
-                        20].split()[2])
-    await ctx.reply(f"The chance of solving the setup is {solverate}")
-    remove(f"__userdata/{ctx.author.id}/ezsfinder.txt")
+    await ctx.reply(file=discord.File("error.txt"))
+    bot.get_command("sfinder").reset_cooldown(ctx)
+    return
+
+  output = open(f"__userdata/{ctx.author.id}/ezsfinder.txt").read()
+  solverate = (output[output.find("success"):output.find("success") +
+                      20].split()[2])
+  output = output.splitlines()
+  doprint = False
+  with open(f"__userdata/{ctx.author.id}/failqueues.txt",
+            "w") as failqueuesfile:
+    failqueuesfile.write("Fail queues:\n")
+    accum = ""
+    for i in output:
+      if (i == "" and doprint):
+        break
+      if (doprint):
+        accum += i + "\n"
+      if ("Fail pattern" in i):
+        doprint = True
+    failqueuesfile.write(accum)
+  await ctx.reply(
+    f"The chance of solving the setup is {solverate}.",
+    file=discord.File(f"__userdata/{ctx.author.id}/failqueues.txt"))
 
 
 @bot.command()
@@ -861,10 +1104,13 @@ async def minimals(ctx, fumen=None, queue=None, clear=4, saves=None):
 
     await system(
       ctx,
-      f"npx sfinder-minimal output/path.csv > __userdata/{ctx.author.id}/ezsfinder.txt")
-    await system(ctx,
-                 f"python true_minimal.py > __userdata/{ctx.author.id}/ezsfinder.txt")
-    minimallink = open(f"__userdata/{ctx.author.id}/ezsfinder.txt").read().splitlines()[1]
+      f"npx sfinder-minimal output/path.csv > __userdata/{ctx.author.id}/ezsfinder.txt"
+    )
+    await system(
+      ctx,
+      f"python true_minimal.py > __userdata/{ctx.author.id}/ezsfinder.txt")
+    minimallink = open(
+      f"__userdata/{ctx.author.id}/ezsfinder.txt").read().splitlines()[1]
     await ctx.reply(f"The normal minimals are {minimallink}")
   else:
     pathtest = await system(
@@ -886,9 +1132,11 @@ async def minimals(ctx, fumen=None, queue=None, clear=4, saves=None):
       await ctx.reply(
         "Something went wrong running sfinder-saves.py. It does not take queue input as liberally as sfinder, so make sure to put commas."
       )
-      await ctx.reply(file=discord.file(f"__userdata/{ctx.author.id}/error.txt"))
+      await ctx.reply(
+        file=discord.file(f"__userdata/{ctx.author.id}/error.txt"))
     pieces = saves.replace("||", "")
-    output = open(f"__userdata/{ctx.author.id}/ezsfinder.txt").read().splitlines()
+    output = open(
+      f"__userdata/{ctx.author.id}/ezsfinder.txt").read().splitlines()
     await ctx.reply(f"The save {pieces} minimals are {output[-1]}")
   remove(f"__userdata/{ctx.author.id}/ezsfinder.txt")
 
@@ -1249,95 +1497,6 @@ def holdsfinderqueues(queue):
 
 
 @bot.command()
-async def score(ctx,
-                fumen=None,
-                queue=None,
-                clear=4,
-                initial_b2b="false",
-                b2b_bonus=0,
-                initial_combo=0,
-                field_file=None):
-  if (fumen == None or queue == None):
-    await ctx.reply("Please specify a fumen and a queue")
-    return
-
-  with open(f"__userdata/{ctx.author.id}/queuefeed.txt", "w") as queuefeed:
-    accum = ""
-    for i in holdsfinderqueues(queue):
-      accum += i + "\n"
-    queuefeed.write(accum)
-
-  if (not "FILE:" in fumen):
-    scorecommand = await system(
-      ctx,
-      f"java -jar sfinder.jar path -t {fumen} -pp __userdata/{ctx.author.id}/queuefeed.txt --clear {clear} --hold avoid -split yes -f csv -k pattern -o output/path.csv -K kicks/jstris180.properties -d 180 > __userdata/{ctx.author.id}/ezsfinder.txt 2> scoreerror.txt"
-    )
-  else:
-    file = fumen.split("FILE:")[1]
-    scorecommand = await system(
-      ctx,
-      f"java -jar sfinder.jar cover -fp {file} -pp __userdata/{ctx.author.id}/queuefeed.txt --clear {clear} --hold avoid -split yes -f csv -k pattern -o output/cover.csv -K kicks/jstris180.properties -d 180 > __userdata/{ctx.author.id}/ezsfinder.txt 2> scoreerror.txt"
-    )
-
-  if (scorecommand != 0):
-    await ctx.reply(
-      "An error has occured with the sfinder command and the parameters you sent."
-    )
-    await ctx.reply(file=discord.File("scoreerror.txt"))
-    return
-
-  if (not "FILE:" in fumen):
-    await system(
-      ctx,
-      f"node avg_score_ezsfinderversion.js queue={queue} initialB2B={initial_b2b} initialCombo={initial_combo} b2bEndBonus={b2b_bonus} > __userdata/{ctx.author.id}/ezsfinder.txt"
-    )
-  else:
-    await system(
-      ctx,
-      f"node avg_score_ezsfinderversion.js queue={queue} initialB2B={initial_b2b} initialCombo={initial_combo} b2bEndBonus={b2b_bonus} fileName=output/cover.csv fileType=cover > __userdata/{ctx.author.id}/ezsfinder.txt"
-    )
-  score = open(f"__userdata/{ctx.author.id}/ezsfinder.txt").read().splitlines()
-  printingscores = True
-
-  allspecial = "```\n"
-
-  for v, i in enumerate(score):
-    if (i == "{"):
-      printingscores = False
-    if (printingscores):
-      specialcount = int(i.split(": ")[1])
-      specialtype = i.split(": ")[0]
-      allqueues = int(score[-1])
-      allspecial += (
-        f"There are {specialcount}/{allqueues} ({round(specialcount/allqueues * 100, 3)}%) queues where {specialtype} is the optimal solve \n"
-      )
-    if ("average_covered_score" in i):
-      if (allspecial != "```\n"):
-        allspecial += "\n```"
-        await ctx.reply(allspecial)
-      else:
-        await ctx.reply("There is no extra scoring")
-
-      score_percentage = int(score[v + 1].split(": ")[1][:-1]) / int(
-        score[-1]) * 100
-      withpcscore = round(float(i.split(": ")[1][:-1]), 2)
-      average_score = round(
-        withpcscore / int(score[-1]) * int(score[v + 1].split(": ")[1][:-1]),
-        2)
-
-      await ctx.send(
-        f"**On average, when the setup has a perfect clear, you would score {withpcscore} points.**"
-      )
-      await ctx.send(
-        f"**Factoring in pc chance ({score_percentage}%), the average score is {average_score}**"
-      )
-
-      remove(f"__userdata/{ctx.author.id}/ezsfinder.txt")
-      remove(f"__userdata/{ctx.author.id}/queuefeed.txt")
-      break
-
-
-@bot.command()
 async def special_minimals(ctx,
                            fumen=None,
                            queue=None,
@@ -1358,7 +1517,8 @@ async def special_minimals(ctx,
     remove(f"__userdata/{ctx.author.id}/ezsfinder.txt")
     return
 
-  with open(f'__userdata/{ctx.author.id}/path_unique.html', encoding="utf-8") as f:
+  with open(f'__userdata/{ctx.author.id}/path_unique.html',
+            encoding="utf-8") as f:
     html = f.read()
 
   soup = BeautifulSoup(html, 'html.parser')
@@ -1395,7 +1555,8 @@ async def special_minimals(ctx,
     ctx,
     f"npx sfinder-minimal __userdata/{ctx.author.id}/tempcover_to_path.csv > __userdata/{ctx.author.id}/ezsfinder.txt"
   )
-  await system(ctx, f"python true_minimal.py > __userdata/{ctx.author.id}/ezsfinder.txt")
+  await system(
+    ctx, f"python true_minimal.py > __userdata/{ctx.author.id}/ezsfinder.txt")
   trueminimallink = open(
     f"__userdata/{ctx.author.id}/ezsfinder.txt").read().splitlines()[-1]
   await ctx.reply(f"Your {minimal_type} minimals are {trueminimallink}")
@@ -1405,72 +1566,48 @@ async def special_minimals(ctx,
   #remove(f"__userdata/{ctx.author.id}/tempcover.csv")
   #remove(f"__userdata/{ctx.author.id}/tempcover_to_path.csv")
 
-
 @bot.command()
-async def congruent(ctx, fumen=None, queue=None, blueGarbage=""):
-  if (fumen == None):
-    await ctx.reply("Please provide a fumen")
-    return
-  elif (queue == None):
-    await ctx.reply("Please provide a queue")
-    return
+async def special_cover(ctx, fumen=None, queue=None, clear=4, minimal_type="tss"):
+  if (fumen == None or queue == None):
+    await ctx.reply("You have to specify a fumen and a queue")
 
-  if blueGarbage.upper() == "TRUE":
-    await system(
-      ctx, f"node convertalltoblue.js {fumen} > __userdata/{ctx.author.id}/tempblued.txt")
-  else:
-    await system(
-      ctx, f"node converttoblue.js {fumen} > __userdata/{ctx.author.id}/tempblued.txt")
-  blued = open(f"__userdata/{ctx.author.id}/tempblued.txt").read().replace("\n", "")
-  blued = encode(blued)
-
-  await system(
+  sfindercommand = await system(
     ctx,
-    f"java -jar sfinder.jar setup --fill I --tetfu {blued} --patterns {queue} -d 180 -K kicks/tetrio180.properties -fo csv --output __userdata/{ctx.author.id}/tempsetup.csv > setupoutput.txt 2> __userdata/{ctx.author.id}/error.txt"
+    f"java -jar sfinder.jar path -t {fumen} -p {queue} --clear {clear} -K kicks/jstris180.properties --split yes -d 180 -o __userdata/{ctx.author.id}/path > __userdata/{ctx.author.id}/ezsfinder.txt"
   )
 
-  allfumens = [
-    i.split(",")[0]
-    for i in open(f"__userdata/{ctx.author.id}/tempsetup.csv").read().splitlines()[1:]
-  ]
-
-  if(allfumens == []):
-    await ctx.reply("Looks like there were no congruents. If all the blocks are garbage, make sure to enable the garbage parameter.")
+  if (sfindercommand != 0):
+    await ctx.reply(
+      "Something went wrong with the sfinder command. Please check for any typoes you might have had."
+    )
+    remove(f"__userdata/{ctx.author.id}/ezsfinder.txt")
     return
 
-  allfumens = join(allfumens)[0]
-  await ctx.reply(make_tiny("https://fumen.zui.jp/?" + allfumens))
-  remove(f"__userdata/{ctx.author.id}/tempblued.txt")
-  remove(f"__userdata/{ctx.author.id}/tempsetup.csv")
+  with open(f'__userdata/{ctx.author.id}/path_unique.html',
+            encoding="utf-8") as f:
+    html = f.read()
 
+  soup = BeautifulSoup(html, 'html.parser')
+  links = []
+  for link in soup.findAll('a'):
+    links.append(link.get('href'))
+    allfumen = links[1:]
 
-@bot.command()
-async def cover(ctx, *, allstuff=None):
-  if (allstuff == None):
-    await ctx.reply("Please provide fumens and queues")
-    return
+  with open(f"__userdata/{ctx.author.id}/coverfield.txt", "w") as file:
+    for i in allfumen:
+      file.write(i)
+      file.write("\n")
 
-  allstuff = allstuff.split()
-  fumens = []
-  queue = ""
-  for arg in allstuff:
-    if ("115" in arg):
-      fumens.append(arg)
-    else:
-      queue = arg
-
-  fumens = glue(unglue(fumensplit(fumens)))
-
-  fumens = ' '.join(fumens)
+  remove_duplicates(f"__userdata/{ctx.author.id}/coverfield.txt")
 
   covercommand = await system(
     ctx,
-    f'java -jar sfinder.jar cover -t "{fumens}" -p {queue} -K kicks/jstris180.properties -d 180 --output __userdata/{ctx.author.id}/tempcover.csv > __userdata/{ctx.author.id}/tempcover.txt'
+    f"java -jar sfinder.jar cover -p {queue} -M {minimal_type} -K kicks/jstris180.properties -d 180 -fp __userdata/{ctx.author.id}/coverfield.txt -o __userdata/{ctx.author.id}/tempcover.csv> __userdata/{ctx.author.id}/ezsfinder.txt"
   )
 
   if (covercommand != 0):
     await ctx.reply(
-      "Something went wrong with the cover command. Make sure your parameters are right."
+      "Something went wrong with the cover command. Check that the minimal type is a valid one"
     )
     return
 
@@ -1478,7 +1615,7 @@ async def cover(ctx, *, allstuff=None):
   setupcover = 0
   failqueues = open(f"__userdata/{ctx.author.id}/coverfailqueues.txt", "w")
 
-  coverfile = open(f"__userdata/{ctx.author.id}/tempcover.csv").read().splitlines()[1:]
+  coverfile = open(f"__userdata/{ctx.author.id}/tempcover.csv").read().splitlines()
   for cover in coverfile:
     allqueues += 1
     coverage = cover.split(",")[1:]
@@ -1491,10 +1628,129 @@ async def cover(ctx, *, allstuff=None):
       failqueues.write("\n")
   failqueues.close()
 
-  await ctx.reply(f"The coverage is {setupcover}/{allqueues}")
+  await ctx.reply(
+    f"The coverage is {setupcover}/{allqueues} ({setupcover/allqueues*100}%)")
   if (setupcover != allqueues):
     await ctx.send("Fail queues")
-    await ctx.send(file=discord.File(f"__userdata/{ctx.author.id}/coverfailqueues.txt"))
+    await ctx.send(
+      file=discord.File(f"__userdata/{ctx.author.id}/coverfailqueues.txt"))
+
+@bot.command(aliases=["congruents"])
+async def congruent(ctx, fumen=None, queue=None, blueGarbage=""):
+  if (fumen == None):
+    await ctx.reply("Please provide a fumen")
+    return
+  elif (queue == None):
+    await ctx.reply("Please provide a queue")
+    return
+
+  if blueGarbage.lower() == "true":
+    await system(
+      ctx,
+      f"node convertalltoblue.js {fumen} > __userdata/{ctx.author.id}/tempblued.txt"
+    )
+  else:
+    await system(
+      ctx,
+      f"node converttoblue.js {fumen} > __userdata/{ctx.author.id}/tempblued.txt"
+    )
+  blued = open(f"__userdata/{ctx.author.id}/tempblued.txt").read().replace(
+    "\n", "")
+  blued = encode(blued)
+
+  await system(
+    ctx,
+    f"java -jar sfinder.jar setup --fill I --tetfu {blued} --patterns {queue} -d 180 -K kicks/tetrio180.properties -fo csv --output __userdata/{ctx.author.id}/tempsetup.csv > setupoutput.txt 2> __userdata/{ctx.author.id}/error.txt"
+  )
+
+  try:
+    allfumens = [
+      i.split(",")[0] for i in open(
+        f"__userdata/{ctx.author.id}/tempsetup.csv").read().splitlines()[1:]
+    ]
+  except FileNotFoundError:
+    await ctx.reply("Error on sfinder!",
+                    file=discord.File(f"__userdata/{ctx.author.id}/error.txt"))
+    return
+
+  if (allfumens == []):
+    await ctx.reply(
+      "Looks like there were no congruents. If all the blocks are garbage, make sure to enable the garbage parameter."
+    )
+    return
+
+  allfumens = join(allfumens)[0]
+  try:
+    await ctx.reply(make_tiny("https://fumen.zui.jp/?" + allfumens))
+  except:
+    with open(f"__userdata/{ctx.author.id}/tiny_error.txt", "w") as file:
+      file.write("https://fumen.zui.jp/?" + allfumens)
+
+    with open(f"__userdata/{ctx.author.id}/tiny_error.txt", "rb") as file:
+      await ctx.reply("Congruents (tinyurl failed):",
+                      file=discord.File(file, "result.txt"))
+
+    remove(f"__userdata/{ctx.author.id}/tiny_error.txt")
+
+  remove(f"__userdata/{ctx.author.id}/tempblued.txt")
+  remove(f"__userdata/{ctx.author.id}/tempsetup.csv")
+
+
+@bot.command()
+async def cover(ctx, fumens=None, queue=None, mode="normal", mirror="no"):
+
+  if (fumens == None):
+    await ctx.reply("Please provide fumens")
+    return
+  elif (queue == None):
+    await ctx.reply("Please provide a queue")
+    return
+
+  gluedfumens = fumensplit([fumens])
+  fumens = []
+  for i in gluedfumens:
+    fumens.append(glue(unglue(i)))
+
+  fumens = " ".join(fumens)
+
+  covercommand = await system(
+    ctx,
+    f"java -jar sfinder.jar cover -t \"{fumens}\" -p {queue} -K kicks/jstris180.properties -d 180 -M {mode} -m {mirror.lower()} --output __userdata/{ctx.author.id}/tempcover.csv  __userdata/{ctx.author.id}/tempcover.csv > __userdata/{ctx.author.id}/tempcover.txt"
+  )
+
+  if (covercommand != 0):
+    await ctx.reply(
+      "Something went wrong with the cover command. Make sure your parameters are right."
+    )
+    return
+
+  allqueues = 0
+  setupcover = 0
+  failqueues = open(f"__userdata/{ctx.author.id}/coverfailqueues.txt", "w")
+
+  coverfile = open(
+    f"__userdata/{ctx.author.id}/tempcover.csv").read().splitlines()[1:]
+  for cover in coverfile:
+    allqueues += 1
+    coverage = cover.split(",")[1:]
+    coverqueue = cover.split(",")[0]
+    coverage = any([True if i == "O" else False for i in coverage])
+    if (coverage):
+      setupcover += 1
+    else:
+      failqueues.write(coverqueue)
+      failqueues.write("\n")
+  failqueues.close()
+
+  await ctx.reply(
+    f"The coverage is {setupcover}/{allqueues} ({setupcover/allqueues*100}%)")
+  if (setupcover != allqueues):
+    await ctx.send("Fail queues")
+    await ctx.send(
+      file=discord.File(f"__userdata/{ctx.author.id}/coverfailqueues.txt"))
+
+  remove(f"__userdata/{ctx.author.id}/coverfailqueues.txt")
+  remove(f"__userdata/{ctx.author.id}/tempcover.csv")
 
 
 @bot.command(aliases=[":3"])
@@ -1506,6 +1762,109 @@ async def imageofacat(ctx):
   embed.set_image(url=image_url)
 
   await ctx.reply(embed=embed)
+
+
+@bot.command()
+async def congruent_cover(ctx,
+                          fumen=None,
+                          queue=None,
+                          mode="normal",
+                          mirror="no",
+                          blueGarbage="boykisser >:3"):
+  if (fumen == None):
+    await ctx.reply("Please provide a fumen")
+    return
+  elif (queue == None):
+    await ctx.reply("Please provide a queue")
+    return
+
+  if blueGarbage.lower() == "true":
+    await system(
+      ctx,
+      f"node convertalltoblue.js {fumen} > __userdata/{ctx.author.id}/tempblued.txt"
+    )
+  else:
+    await system(
+      ctx,
+      f"node converttoblue.js {fumen} > __userdata/{ctx.author.id}/tempblued.txt"
+    )
+  blued = open(f"__userdata/{ctx.author.id}/tempblued.txt").read().replace(
+    "\n", "")
+  blued = encode(blued)
+
+  await system(
+    ctx,
+    f"java -jar sfinder.jar setup --fill I --tetfu {blued} --patterns {queue} -d 180 -K kicks/tetrio180.properties -fo csv --output __userdata/{ctx.author.id}/tempsetup.csv > setupoutput.txt 2> __userdata/{ctx.author.id}/error.txt"
+  )
+
+  try:
+    fumens = [
+      i.split(",")[0] for i in open(
+        f"__userdata/{ctx.author.id}/tempsetup.csv").read().splitlines()[1:]
+    ]
+  except FileNotFoundError:
+    await ctx.reply("Error on sfinder!",
+                    file=discord.File(f"__userdata/{ctx.author.id}/error.txt"))
+    return
+
+  unglued_fumens = fumens
+  fumens = glue(unglue(fumensplit(fumens)))
+  fumens = ' '.join(fumens)
+
+  covercommand = await system(
+    ctx,
+    f'java -jar sfinder.jar cover -t "{fumens}" -p {queue} -K kicks/jstris180.properties -d 180 -M {mode} -m {mirror.lower()} --output __userdata/{ctx.author.id}/tempcover.csv  __userdata/{ctx.author.id}/tempcover.csv > __userdata/{ctx.author.id}/tempcover.txt'
+  )
+
+  if (covercommand != 0):
+    await ctx.reply(
+      "Something went wrong with the cover command. Make sure your parameters are right."
+    )
+    return
+
+  allqueues = 0
+  setupcover = 0
+  failqueues = open(f"__userdata/{ctx.author.id}/coverfailqueues.txt", "w")
+
+  coverfile = open(
+    f"__userdata/{ctx.author.id}/tempcover.csv").read().splitlines()[1:]
+  for cover in coverfile:
+    allqueues += 1
+    coverage = cover.split(",")[1:]
+    coverqueue = cover.split(",")[0]
+    coverage = any([True if i == "O" else False for i in coverage])
+    if (coverage):
+      setupcover += 1
+    else:
+      failqueues.write(coverqueue)
+      failqueues.write("\n")
+  failqueues.close()
+
+  await ctx.reply(
+    f"The coverage is {setupcover}/{allqueues} ({round(setupcover/allqueues*100, 2)}%)"
+  )
+  if (setupcover != allqueues):
+    await ctx.send("Fail queues")
+    await ctx.send(
+      file=discord.File(f"__userdata/{ctx.author.id}/coverfailqueues.txt"))
+
+  allfumens = join(unglued_fumens)[0]
+  try:
+    await ctx.send("All congruents: " +
+                   make_tiny("https://fumen.zui.jp/?" + allfumens))
+  except:
+    with open(f"__userdata/{ctx.author.id}/tiny_error.txt", "w") as file:
+      file.write("https://fumen.zui.jp/?" + allfumens)
+
+    with open(f"__userdata/{ctx.author.id}/tiny_error.txt", "rb") as file:
+      await ctx.send("Congruents (tinyurl failed):",
+                     file=discord.File(file, "result.txt"))
+
+    remove(f"__userdata/{ctx.author.id}/tiny_error.txt")
+
+  remove(f"__userdata/{ctx.author.id}/tempblued.txt")
+  remove(f"__userdata/{ctx.author.id}/coverfailqueues.txt")
+  remove(f"__userdata/{ctx.author.id}/tempcover.csv")
 
 
 @bot.command()
@@ -1587,6 +1946,96 @@ def convert_csv(input_file, output_file):
   with open(output_file, 'w') as file:
     file.write(content)
 
+@bot.command()
+async def score(ctx,
+                fumen=None,
+                queue=None,
+                clear=4,
+                initial_b2b="false",
+                b2b_bonus=0,
+                initial_combo=0,
+                field_file=None):
+  if (fumen == None or queue == None):
+    await ctx.reply("Please specify a fumen and a queue")
+    return
+
+  with open(f"__userdata/{ctx.author.id}/queuefeed.txt", "w") as queuefeed:
+    accum = ""
+    for i in holdsfinderqueues(queue):
+      accum += i + "\n"
+    queuefeed.write(accum)
+
+  if (not "FILE:" in fumen):
+    scorecommand = await system(
+      ctx,
+      f"java -jar sfinder.jar path -t {fumen} -pp __userdata/{ctx.author.id}/queuefeed.txt --clear {clear} --hold avoid -split yes -f csv -k pattern -o output/path.csv -K kicks/jstris180.properties -d 180 > __userdata/{ctx.author.id}/ezsfinder.txt 2> scoreerror.txt"
+    )
+  else:
+    file = fumen.split("FILE:")[1]
+    scorecommand = await system(
+      ctx,
+      f"java -jar sfinder.jar cover -fp {file} -pp __userdata/{ctx.author.id}/queuefeed.txt --clear {clear} --hold avoid -split yes -f csv -k pattern -o output/cover.csv -K kicks/jstris180.properties -d 180 > __userdata/{ctx.author.id}/ezsfinder.txt 2> scoreerror.txt"
+    )
+
+  if (scorecommand != 0):
+    await ctx.reply(
+      "An error has occured with the sfinder command and the parameters you sent."
+    )
+    await ctx.reply(file=discord.File("scoreerror.txt"))
+    return
+
+  if (not "FILE:" in fumen):
+    await system(
+      ctx,
+      f"node avg_score_ezsfinderversion.js queue={queue} initialB2B={initial_b2b} initialCombo={initial_combo} b2bEndBonus={b2b_bonus} > __userdata/{ctx.author.id}/ezsfinder.txt"
+    )
+  else:
+    await system(
+      ctx,
+      f"node avg_score_ezsfinderversion.js queue={queue} initialB2B={initial_b2b} initialCombo={initial_combo} b2bEndBonus={b2b_bonus} fileName=output/cover.csv fileType=cover > __userdata/{ctx.author.id}/ezsfinder.txt"
+    )
+  score = open(f"__userdata/{ctx.author.id}/ezsfinder.txt").read().splitlines()
+  printingscores = True
+
+  runningaccum = 0
+  allspecial = "```\n"
+
+  for v, i in enumerate(score):
+    if (i == "{"):
+      printingscores = False
+    if (printingscores):
+      specialcount = int(i.split(": ")[1])
+      specialtype = i.split(": ")[0]
+      allqueues = int(score[-1])
+      runningaccum += specialcount
+      allspecial += (
+        f"There are {specialcount}/{allqueues} ({round(specialcount/allqueues * 100, 3)}%) queues where {specialtype} is the optimal solve \n"
+      )
+    if ("average_covered_score" in i):
+      if (allspecial != "```\n"):
+        allspecial += f"In total, there are {runningaccum}/{allqueues} ({round(runningaccum/allqueues * 100, 3)}%) queues where you have extra scoring"
+        allspecial += "\n```"
+        await ctx.reply(allspecial)
+      else:
+        await ctx.reply("There is no extra scoring")
+
+      score_percentage = int(score[v + 1].split(": ")[1][:-1]) / int(
+        score[-1]) * 100
+      withpcscore = round(float(i.split(": ")[1][:-1]), 2)
+      average_score = round(
+        withpcscore / int(score[-1]) * int(score[v + 1].split(": ")[1][:-1]),
+        2)
+
+      await ctx.send(
+        f"**On average, when the setup has a perfect clear, you would score {withpcscore} points.**"
+      )
+      await ctx.send(
+        f"**Factoring in pc chance ({score_percentage}%), the average score is {average_score}**"
+      )
+
+      remove(f"__userdata/{ctx.author.id}/ezsfinder.txt")
+      remove(f"__userdata/{ctx.author.id}/queuefeed.txt")
+      break
 
 @bot.command()
 async def score_minimals(ctx,
@@ -1788,7 +2237,8 @@ async def calibrate(ctx, preset=None):
     full = dict()
     full["normal"] = pieces
     full["cleared"] = clearedPieces
-    with open(f"__userdata/{ctx.author.id}/toFumenRGB.json", 'w') as convert_file:
+    with open(f"__userdata/{ctx.author.id}/toFumenRGB.json",
+              'w') as convert_file:
       convert_file.write(json.dumps(full))
 
   except Exception:
@@ -1798,7 +2248,7 @@ async def calibrate(ctx, preset=None):
   # I did not write a single full line of code here but it works sooooo
 
 
-@bot.command()
+@bot.command(aliases=["cc"])
 async def currentcommands(ctx):
   if not running_commands:
     await ctx.reply("No commands are running right now")
@@ -1811,18 +2261,27 @@ async def currentcommands(ctx):
   await ctx.reply(message)
 
 
-@bot.command()
-async def killmyprocesses(ctx):
+@bot.command(aliases=["killmycommands", "kill", "k"])
+async def killmyprocesses(ctx, id=None):
+  kill_id = int(ctx.author.id)
+
+  if id != None:
+    if not bot_admin(ctx):
+      ctx.reply("You do not have permission to kill other people's commands")
+      return
+    kill_id = int(id)
+
   for process in running_commands:
-    if (ctx.author.id == process['user']):
-      await ctx.send(f"{process['name']} killed")
+    print(f"{kill_id}, {process['user']}")
+    if (kill_id == int(process['user'])):
+      await ctx.send(f"`{process['name']}` killed")
       try:
         running_commands.remove(process)
       except:
         pass
       process['process'].kill()
   await ctx.reply(
-    "All your processes killed. Note that whatever command you were running will probably error."
+    f"All processes owned by <@!{kill_id}> have been killed. Note that whatever command they were running will probably error."
   )
 
 
@@ -1834,17 +2293,19 @@ async def togray(ctx, fumen):
   fumen = encode(fumen)
   await ctx.reply(fumen)
 
-tspintypes = {"TSM" : 1, "TSS" : 1, "TSD" : 2, "TST" : 3}
+
+tspintypes = {"TSM": 1, "TSS": 1, "TSD": 2, "TST": 3}
+
 
 @bot.command()
-async def spincover(ctx, fumen = None, queue = None, minimal_type = "TSS"):
+async def spincover(ctx, fumen=None, queue=None, minimal_type="TSS"):
   if (fumen == None):
     await ctx.reply("Please provide a fumen")
     return
   elif (queue == None):
     await ctx.reply("Please provide a queue")
     return
-  elif(not minimal_type.upper() in tspintypes):
+  elif (not minimal_type.upper() in tspintypes):
     print(minimal_type.upper())
     await ctx.reply("The type must be either TSM, TSS, TSD or TST.")
     return
@@ -1857,7 +2318,10 @@ async def spincover(ctx, fumen = None, queue = None, minimal_type = "TSS"):
   tempfile = f"__userdata/{ctx.author.id}/ezsfinder.txt"
   errorfile = f"__userdata/{ctx.author.id}/error.txt"
 
-  spincommand = await system(ctx, f"java -jar sfinder.jar spin -t {fumen} -p {queue} --format csv --split yes -o {spinfile} -c {tspintypes[minimal_type.upper()]} > {tempfile} 2> {errorfile}")
+  spincommand = await system(
+    ctx,
+    f"java -jar sfinder.jar spin -t {fumen} -p {queue} --format csv --split yes -o {spinfile} -c {tspintypes[minimal_type.upper()]} > {tempfile} 2> {errorfile}"
+  )
 
   if (spincommand != 0):
     await ctx.reply(
@@ -1866,7 +2330,7 @@ async def spincover(ctx, fumen = None, queue = None, minimal_type = "TSS"):
     await ctx.reply(file=discord.File(errorfile))
     return
 
-  spins = open(spinfile, encoding = "utf-8").read().splitlines()
+  spins = open(spinfile, encoding="utf-8").read().splitlines()
   allspins = ""
   for spin in spins[1:]:
     spin = spin.split(",")
@@ -1875,7 +2339,10 @@ async def spincover(ctx, fumen = None, queue = None, minimal_type = "TSS"):
   with open(queuefeedfile, "w") as fieldinput:
     fieldinput.write(allspins)
 
-  covercommand = await system(ctx, f"java -jar sfinder.jar cover -fp {spinfile} -p {queue} --kicks kicks/jstris180.properties -d 180 -o {coverfile} -M {minimal_type} > {coveroutputfile} 2> {errorfile}")
+  covercommand = await system(
+    ctx,
+    f"java -jar sfinder.jar cover -fp {spinfile} -p {queue} --kicks kicks/jstris180.properties -d 180 -o {coverfile} -M {minimal_type} > {coveroutputfile} 2> {errorfile}"
+  )
   if (covercommand != 0):
     await ctx.reply(
       "An error has occured with the spin command and the parameters you sent."
@@ -1888,28 +2355,46 @@ async def spincover(ctx, fumen = None, queue = None, minimal_type = "TSS"):
   setupandcover = []
   coveroutput = open(coveroutputfile).read().splitlines()
   for i in coveroutput:
-    if("fumen.zui.jp" in i):
-        coverpercent = float(i.split(" %")[0])
-        coverfumen = i.split("fumen.zui.jp/?")[1]
-        setupandcover.append([decode(unglue(coverfumen)), coverpercent])
-    elif("OR" in i):
-        totalcover = i.split(" = ")[1]
-        output += f"The total coverage is {totalcover}\n"
+    if ("fumen.zui.jp" in i):
+      coverpercent = float(i.split(" %")[0])
+      coverfumen = i.split("fumen.zui.jp/?")[1]
+      setupandcover.append([decode(unglue(coverfumen)), coverpercent])
+    elif ("OR" in i):
+      totalcover = i.split(" = ")[1]
+      output += f"The total coverage is {totalcover}\n"
 
   setupandcover.sort(key=lambda x: x[1] * -1)
   #setupandcover = setupandcover[:50]
   outputfumen = []
 
   for i in setupandcover:
-    outputfumen.append(Page(Field(field = i[0], garbage = "__________"), comment = str(i[1])))
+    outputfumen.append(
+      Page(Field(field=i[0], garbage="__________"), comment=str(i[1])))
 
-  output += "All solutions: " + make_tiny("https://fumen.zui.jp/?" + pyencode(outputfumen)) + "\n"
+  try:
+    output += "All solutions: " + make_tiny("https://fumen.zui.jp/?" +
+                                            pyencode(outputfumen)) + "\n"
+  except:
+    with open(f"__userdata/{ctx.author.id}/tiny_error.txt", "w") as file:
+      file.write("https://fumen.zui.jp/?" + pyencode(outputfumen))
 
-  await system(ctx, f"python cover-to-path.py --csv-path {coverfile} --output-file-path {covertopathfile} --unglued-fumen-script-path unglueFumen.js  > {tempfile}")
+    with open(f"__userdata/{ctx.author.id}/tiny_error.txt", "rb") as file:
+      await ctx.reply("All solutions: (attached as file)",
+                      file=discord.File(file, "result.txt"))
+
+    remove(f"__userdata/{ctx.author.id}/tiny_error.txt")
+
+  await system(
+    ctx,
+    f"python cover-to-path.py --csv-path {coverfile} --output-file-path {covertopathfile} --unglued-fumen-script-path unglueFumen.js  > {tempfile}"
+  )
   await system(ctx, f"npx sfinder-minimal {covertopathfile} > {tempfile}")
-  await system(ctx, f"python true_minimal.py > {tempfile}")
-  outputlink = open(tempfile).read().splitlines()[1]
-  output += f"The minimal followup set is {outputlink}"
+  try:
+    await system(ctx, f"python true_minimal.py > {tempfile}")
+    outputlink = open(tempfile).read().splitlines()[1]
+    output += f"The minimal followup set is {outputlink}"
+  except:
+    pass
   await ctx.reply(output)
 
   remove(spinfile)
@@ -1919,8 +2404,16 @@ async def spincover(ctx, fumen = None, queue = None, minimal_type = "TSS"):
   remove(covertopathfile)
   #remove(tempfile)
 
+
 @bot.command()
-async def setupcover(ctx, fumen = None, queue = None, second_queue = None, minimal_type = "normal", exclude = "none", fill = "I", margin = "O"):
+async def setupcover(ctx,
+                     fumen=None,
+                     queue=None,
+                     second_queue=None,
+                     minimal_type="normal",
+                     exclude="none",
+                     fill="I",
+                     margin="O"):
   if (fumen == None):
     await ctx.reply("Please provide a fumen")
     return
@@ -1939,8 +2432,457 @@ async def setupcover(ctx, fumen = None, queue = None, second_queue = None, minim
   tempfile = f"__userdata/{ctx.author.id}/ezsfinder.txt"
   errorfile = f"__userdata/{ctx.author.id}/error.txt"
 
-  spincommand = await system(ctx, f"java -jar sfinder.jar setup -t {fumen} -p {queue} --format csv --split yes -o {spinfile} --fill {fill} --margin {margin} --exclude {exclude} > {tempfile} 2> {errorfile} ")
-  spins = open(spinfile, encoding = "utf-8").read().splitlines()
+  spincommand = await system(
+    ctx,
+    f"java -jar sfinder.jar setup -t {fumen} -p {queue} --format csv --split yes -o {spinfile} --fill {fill} --margin {margin} --exclude {exclude} > {tempfile} 2> {errorfile} "
+  )
+
+  if (spincommand != 0):
+    await ctx.reply(
+      "An error has occured with the setup command and the parameters you sent."
+    )
+    await ctx.reply(file=discord.File(errorfile))
+    return
+
+  spins = open(spinfile, encoding="utf-8").read().splitlines()
+
+  allspins = ""
+  for spin in spins[1:]:
+    spin = spin.split(",")
+    allspins += spin[0] + "\n"
+
+  with open(queuefeedfile, "w") as fieldinput:
+    fieldinput.write(allspins)
+
+  covercommand = await system(
+    ctx,
+    f"java -jar sfinder.jar cover -fp {spinfile} -p {second_queue} --kicks kicks/jstris180.properties -d 180 -o {coverfile} -M {minimal_type} > {coveroutputfile} 2> {errorfile}"
+  )
+  if (covercommand != 0):
+    await ctx.reply(
+      "An error has occured with the cover command and the parameters you sent."
+    )
+    await ctx.reply(file=discord.File(errorfile))
+    return
+
+  output = ""
+
+  setupandcover = []
+  coveroutput = open(coveroutputfile).read().splitlines()
+  for i in coveroutput:
+    if ("fumen.zui.jp" in i):
+      coverpercent = float(i.split(" %")[0])
+      coverfumen = i.split("fumen.zui.jp/?")[1]
+      setupandcover.append([decode(unglue(coverfumen)), coverpercent])
+    elif ("OR" in i):
+      totalcover = i.split(" = ")[1]
+      output += f"The total coverage is {totalcover}\n"
+
+  setupandcover.sort(key=lambda x: x[1] * -1)
+  #setupandcover = setupandcover[:50]
+  outputfumen = []
+
+  for i in setupandcover:
+    outputfumen.append(
+      Page(Field(field=i[0], garbage="__________"), comment=str(i[1])))
+
+  try:
+    output += "All solutions: " + make_tiny("https://fumen.zui.jp/?" +
+                                            pyencode(outputfumen)) + "\n"
+  except:
+    with open(f"__userdata/{ctx.author.id}/tiny_error.txt", "w") as file:
+      file.write("https://fumen.zui.jp/?" + pyencode(outputfumen))
+
+    with open(f"__userdata/{ctx.author.id}/tiny_error.txt", "rb") as file:
+      await ctx.send("All solutions (tinyurl failed):",
+                     file=discord.File(file, "result.txt"))
+
+    remove(f"__userdata/{ctx.author.id}/tiny_error.txt")
+
+  await system(
+    ctx,
+    f"python cover-to-path.py --csv-path {coverfile} --output-file-path {covertopathfile} --unglued-fumen-script-path unglueFumen.js  > {tempfile}"
+  )
+  await system(ctx, f"npx sfinder-minimal {covertopathfile} > {tempfile}")
+  await system(ctx, f"python true_minimal.py > {tempfile}")
+  outputlink = open(tempfile).read().splitlines()[1]
+  output += f"The minimal followup set is {outputlink}"
+  await ctx.reply(output)
+
+  remove(spinfile)
+  remove(queuefeedfile)
+  remove(coverfile)
+  remove(coveroutputfile)
+  remove(covertopathfile)
+
+
+@bot.command()
+async def catgirl(ctx):
+  url = "https://drake-pi.huycao1.repl.co/catgirl/"
+  # Fetch the image from the URL
+  response = requests.get(url)
+  response.raise_for_status(
+  )  # Raise an error if the request was not successful
+
+  # Send the image in the Discord channel
+  image_bytes = response.content
+  file = discord.File(io.BytesIO(image_bytes), filename="catgirl.png")
+  await ctx.send(file=file)
+
+
+# if the missage link is in a dm, use dm_uid to get the channel object
+# dm_uid = user the dm is with
+bot.command()
+
+
+async def link_jb(ctx, message_link, dm_uid):
+  ids = message_link.split("/")
+
+  if ids[4] == "@me":
+    gid = -1  # in dms
+  else:
+    gid = int(ids[4])
+  cid = int(ids[5])
+  mid = int(ids[6])
+  bot_id = 1112088204976341194
+
+  guild = bot.get_guild(gid)
+  if gid > 0 and guild.get_member(bot_id) == None:
+    await ctx.reply("Bot is not in the linked server.")
+    return
+
+  if gid > 0:
+    channel = guild.get_channel(cid)
+    message = await channel.fetch_message(mid)
+  else:
+    dm_user = await bot.fetch_user(dm_uid)
+    message = await dm_user.fetch_message(mid)
+
+  gif = discord.File(f"jb_gifs/jb-{random.randint(1, 12)}.gif")
+
+  await message.channel.send(f"\"{message.content}\" :nerd:",
+                             file=gif,
+                             reference=message,
+                             mention_author=False)
+  return
+
+
+@bot.command()
+async def jb(ctx, message_link=None, dm_uid=None):
+  if not bot_admin(ctx):
+    await ctx.send("I don't think jb is a command :3")
+    return
+
+  if (message_link != None):
+    await link_jb(ctx, message_link, dm_uid)
+    return
+
+  if (ctx.message.reference == None):
+    await ctx.reply("Please reply to the command you want to jb :D")
+    return
+
+  message = await ctx.channel.fetch_message(ctx.message.reference.message_id)
+  gif = discord.File(f"jb_gifs/jb-{random.randint(1, 12)}.gif")
+
+  await message.channel.send(f"\"{message.content}\" :nerd:",
+                             file=gif,
+                             reference=message,
+                             mention_author=False)
+
+
+@bot.command()
+async def pcnewsletterimage(ctx):
+  attachments = ctx.message.attachments
+  if len(attachments) != 6:
+    await ctx.send(
+      f"Please provide exactly 6 images. You have provided {len(attachments)}")
+    return
+  try:
+    images = []
+    for attachment in attachments:
+      image_bytes = await attachment.read()
+      image = Image.open(io.BytesIO(image_bytes))
+      images.append(image)
+
+    final_image = Image.open("backgroundimage.png").convert("RGB")
+
+    def scale_image(image, row, column):
+      nonlocal final_image
+      current_pic = image.copy()
+
+      w, h = current_pic.size
+
+      if w >= h:
+        current_pic = current_pic.resize(
+          (int(w * 1480 / w), int(h * 1480 / w)))
+      else:
+        current_pic = current_pic.resize(
+          (int(w * 1480 / h), int(h * 1480 / h)))
+
+      w, h = current_pic.size
+
+      final_image.paste(
+        current_pic,
+        box=(1500 * row + int((1492 - w) / 2), 1500 * column + int(
+          (1492 - h) / 2)),
+      )
+
+    counter = 0
+    for column in range(2):
+      for row in range(3):
+        scale_image(images[counter], row, column)
+        counter += 1
+
+    # Save the final image to a BytesIO buffer
+    image_buffer = io.BytesIO()
+    final_image.save(image_buffer, format="PNG")
+    image_buffer.seek(0)
+
+    # Send the image as a file
+    await ctx.send(file=discord.File(image_buffer, filename="collage.png"))
+
+  except Exception as e:
+    await ctx.send(f"Error creating the collage: {e}")
+
+
+def get_failed_pc(pieces):
+  return (pieces * 5) % 7 + 1
+
+
+@bot.command()
+async def weightedfails(ctx, uname=None):
+  if (uname == None):
+    await ctx.reply("Please provide an username")
+    return
+
+  pc_leaderboard_url = "https://jstris.jezevec10.com/PC-mode?display=5&user=" + uname
+  res = requests.get(pc_leaderboard_url)
+
+  if res.status_code != 200:
+    await ctx.reply("Failed to fetch data.")
+    return
+
+  res_soup = BeautifulSoup(res.content, 'html.parser')
+
+  table = res_soup.find('table')
+
+  pc_nums = []
+  pc_pieces = []
+
+  for row in table.find_all('tr')[1:]:
+    cols = row.find_all('td')[0].find_all('td')
+    pc_nums.append(int(cols[1].text))
+    pc_pieces.append(int(cols[3].text))
+
+  fails = {x: 0 for x in range(1, 8)}
+  n = len(pc_pieces)
+  denom = n * (n + 1) // 2
+
+  for (k, p) in enumerate(pc_pieces):
+    fails[get_failed_pc(p)] += (n - k) / denom
+
+  # Create the plot
+  plt.bar(range(len(fails)), list(fails.values()), align='center')
+  plt.xticks(range(len(fails)), list(fails.keys()))
+  plt.title(f"PC Fails for User {uname}")
+
+  # Save the plot to a file
+  buffer = io.BytesIO()
+  plt.savefig(buffer, format='png')
+  buffer.seek(0)
+
+  # Send the file as an attachment
+  await ctx.send(
+    file=discord.File(buffer, filename='thanks_torchlight_for_code.png'))
+
+
+@bot.command()
+async def blacklist(ctx, uid=None):
+  if not bot_admin(ctx):
+    await ctx.reply("Insufficient permissions!")
+    return
+  if uid == None:
+    await ctx.reply("send a user id/mention pls :D")
+    return
+  if uid.startswith("<@"):
+    uid = uid[2:-1]
+
+  if ("blacklist" + uid) in db.keys():
+    del db["blacklist" + uid]
+  else:
+    db["blacklist" + uid] = "girl"
+
+  await ctx.send(f"Blacklisted <@!{uid}> successfully!",
+                 reference=ctx.message,
+                 mention_author=False)
+
+
+@bot.command()
+async def td(ctx):
+  with open("td_db.csv", "rt") as f:
+    tds = list(csv.reader(f))
+
+  choice = random.randint(0, len(tds))
+
+  await ctx.send(f"{tds[choice][0]}",
+                 reference=ctx.message,
+                 file=(toimage(tds[choice][1])))
+
+
+@bot.command()
+async def command_blacklist(ctx, command=None):
+  if ctx.guild == None:
+    ctx.reply("Cannot blacklist in DMs.")
+    return
+  if not (bot_admin(ctx) or ctx.permissions.manage_guild):
+    ctx.reply("Insufficient permissions young lad!!!!!!!")
+    return
+  if command == None:
+    await ctx.reply("send a command name pls :D")
+    return
+
+  gid = ctx.guild.id
+  key = f"command_ban{gid}{command}"
+
+  if key in db.keys():
+    del db[key]
+    await ctx.send(f"Un-blacklisted `{command}` successfully!",
+                   reference=ctx.message)
+  else:
+    db[key] = "girl"
+    await ctx.send(f"Blacklisted `{command}` successfully!",
+                   reference=ctx.message)
+
+
+@bot.check
+async def check_commands(ctx):
+  if ctx.guild == None:
+    return True
+  key = f"command_ban{ctx.guild.id}{ctx.command.qualified_name}"
+  return not (key in db.keys())
+
+@bot.command(aliases=[":("])
+async def angery(ctx):
+  await ctx.message.remove_reaction("<a:boykisser_jumpscare:1131246599113289849>", bot.user)
+  
+  await ctx.message.add_reaction("<:ANGERY:988155325834231849>")
+
+# bc im lazy, input as letters for now
+# etc. *p7 --> *, [IOTZ]! --> IOTZ
+# will likely fix later
+# will give you JACK SHIT on mirrored outputs so beware
+# @bot.command()
+async def dependencies(ctx, queue=None):
+  if queue == None:
+    await ctx.reply("Please add a queue.")
+    return
+  if queue == "*":
+    queue = "IOTJLSZ"
+  if len(ctx.message.attachments) == 0:
+    await ctx.reply("No attachment found.")
+    return
+
+  dependencies = set()
+  dep_queues = dict()
+  all_patterns = ["".join(map(str, i)) for i in permutations([*queue], 2)]
+  pass_queues = []
+  try:
+    # Get the attachment + parse
+    attachment = ctx.message.attachments[0]
+    file_bytes = await attachment.read()
+    pass_queues = file_bytes.decode().splitlines()
+  except:
+    await ctx.reply("File read failed.")
+    return
+  
+  # webhook = "https://discord.com/api/webhooks/1137059426537308290/V_iU9f6VZZ5OdqSKy_wDrwMZhoDp4wpIQHU4aqlhJyOnpEC1hVESkpihYOOLFGLWPAHQ"
+  logging_message = ""
+  
+  for pattern in all_patterns:
+    i = 0
+    dep_queues[pattern] = 0
+    
+    for queue in pass_queues:
+      i += 1
+      if is_dependency(queue, pattern):
+        dep_queues[pattern] += 1
+
+    logging_message += f"Pattern {pattern} worked for {dep_queues[pattern]}/{len(pass_queues)} queues\n"
+    if dep_queues[pattern] == len(pass_queues):
+      dependencies.add(pattern)
+    
+
+  message = ""
+  if dependencies:
+    message += "Absolute dependencies: "
+    for d in dependencies:
+      message += f"{d[1]}>{d[0]}, "
+    message = message[:-2] + "\n"
+
+  first_count = dict.fromkeys(list(queue), 0)
+  last_count = dict.fromkeys(list(queue), 0)
+  
+  for pattern, count in dep_queues.items():
+    first_count[pattern[0]] += count
+    last_count[pattern[1]] += count
+
+  logging_message += "\n"
+  for piece in queue:
+    logging_message += f"Piece {piece} has a first count of {first_count[piece]} and a last count of {last_count[piece]}\n"
+
+  filepath = f"__userdata/{ctx.author.id}/logging_message.txt"
+            
+  with open(filepath, "w") as file:
+      file.write(logging_message)
+
+  message += "log:"
+  with open(filepath, "rb") as file:
+    await ctx.send(message + "log:", file=discord.File(file, "logging_message.txt"))
+
+  remove(filepath)
+
+
+# this is like REALLY memory intensive
+# like "ddos the bot until replit restarts it" intensive
+# uncomment + run on an alt if you feel like annoying pc gang without consequences
+# otherwise go fuck yourself
+# @bot.command(aliases=["setupcoverpercent", "scp"])
+async def setup_cover_percent(ctx,
+                      fumen=None,
+                      setup_queue=None,
+                      cover_queue=None,
+                      percent_queue=None,
+                      clear=4,
+                      minimal_type="normal",
+                      exclude="none",
+                      fill="I",
+                      margin="O"):
+  if (fumen == None):
+    await ctx.reply("Please provide a fumen")
+    return
+  elif (setup_queue == None):
+    await ctx.reply("Please provide a setup queue")
+    return
+  elif (cover_queue == None):
+    await ctx.reply("Please provide a cover queue")
+    return
+  elif (percent_queue == None):
+    await ctx.reply("Please provide a percent queue")
+    return
+
+  spinfile = f"__userdata/{ctx.author.id}/tempspin.csv"
+  queuefeedfile = f"__userdata/{ctx.author.id}/tempfield.txt"
+  coverfile = f"__userdata/{ctx.author.id}/cover.csv"
+  coveroutputfile = f"__userdata/{ctx.author.id}/ezsfinder.txt"
+  covertopathfile = f"__userdata/{ctx.author.id}/cover-to-path.csv"
+  tempfile = f"__userdata/{ctx.author.id}/ezsfinder.txt"
+  errorfile = f"__userdata/{ctx.author.id}/error.txt"
+
+  spincommand = await system(
+    ctx,
+    f"java -jar sfinder.jar setup -t {fumen} -p {setup_queue} --format csv --split yes -o {spinfile} --fill {fill} --margin {margin} --exclude {exclude} > {tempfile} 2> {errorfile} "
+  )
+  spins = open(spinfile, encoding="utf-8").read().splitlines()
 
   if (spincommand != 0):
     await ctx.reply(
@@ -1957,7 +2899,10 @@ async def setupcover(ctx, fumen = None, queue = None, second_queue = None, minim
   with open(queuefeedfile, "w") as fieldinput:
     fieldinput.write(allspins)
 
-  covercommand = await system(ctx, f"java -jar sfinder.jar cover -fp {spinfile} -p {second_queue} --kicks kicks/jstris180.properties -d 180 -o {coverfile} -M {minimal_type} > {coveroutputfile} 2> {errorfile}")
+  covercommand = await system(
+    ctx,
+    f"java -jar sfinder.jar cover -fp {spinfile} -p {cover_queue} --kicks kicks/jstris180.properties -d 180 -o {coverfile} -M {minimal_type} > {coveroutputfile} 2> {errorfile}"
+  )
   if (covercommand != 0):
     await ctx.reply(
       "An error has occured with the cover command and the parameters you sent."
@@ -1967,42 +2912,278 @@ async def setupcover(ctx, fumen = None, queue = None, second_queue = None, minim
 
   output = ""
 
-  setupandcover = []
+  outputdict = {} # {fumen:[cover, percent]}
   coveroutput = open(coveroutputfile).read().splitlines()
   for i in coveroutput:
-    if("fumen.zui.jp" in i):
-        coverpercent = float(i.split(" %")[0])
-        coverfumen = i.split("fumen.zui.jp/?")[1]
-        setupandcover.append([decode(unglue(coverfumen)), coverpercent])
-    elif("OR" in i):
-        totalcover = i.split(" = ")[1]
-        output += f"The total coverage is {totalcover}\n"
+    if ("fumen.zui.jp" in i):
+      coverfumen = i.split("fumen.zui.jp/?")[1]
+      coverpercent = float(i.split(" %")[0])
+      if float(coverpercent) > 0.0: # for removes non tsd/tss/tet/etc. solutions
+        outputdict[unglue(coverfumen)] = [float(coverpercent), 0.0]
+    elif ("OR" in i):
+      totalcover = i.split(" = ")[1]
+      output += f"The total coverage is {totalcover}\n"
 
-  setupandcover.sort(key=lambda x: x[1] * -1)
-  #setupandcover = setupandcover[:50]
+  percentfumens = {} # {grayfumen:[fumen1, fumen2...]} 
+  for pfumen in outputdict.keys():
+    grayfumen = decode(pfumen)
+    grayfumen = re.sub("[SZJLTIO]", "X", grayfumen)
+    grayfumen = re.sub("\n", "", grayfumen)
+    grayfumen = encode(grayfumen)
+
+    if grayfumen in percentfumens.keys():
+      percentfumens[grayfumen].append(pfumen)
+    else:
+      percentfumens[grayfumen] = [pfumen]
+  
+  for percent_fumen, fumens in percentfumens.items():
+    percentcommand = await system(
+    ctx,
+      f"java -jar sfinder.jar percent --tetfu {percent_fumen} --patterns {percent_queue} --clear {clear} -K kicks/jstris180.properties -d 180 > {tempfile} 2> error.txt"
+    )
+    if (percentcommand != 0):
+      await ctx.reply(
+        "Something went wrong with running percent. Please ping cringemoment or the other guy"
+      )
+      await ctx.reply(file=discord.File("error.txt"))
+      bot.get_command("sfinder").reset_cooldown(ctx)
+      return
+  
+    p_output = open(tempfile).read() # output already exists >:(
+    solverate = float(p_output[p_output.find("success"):p_output.find("success") +
+                        20].split()[2])
+
+    if solverate >= 0:
+      for pfumen in fumens:
+        outputdict[pfumen][1] = solverate
+    else:
+      for pfumen in fumens:
+        outputdict.pop(pfumen)
+
   outputfumen = []
+  for ofumen, data in outputdict.items():
+    outputfumen.append(
+      Page(Field(field=decode(ofumen), garbage="__________"), comment=f"Cover: {data[0]}, Solve: {data[1]}"))
 
-  for i in setupandcover:
-    outputfumen.append(Page(Field(field = i[0], garbage = "__________"), comment = str(i[1])))
+  try:
+    output += "All solutions: " + make_tiny("https://fumen.zui.jp/?" +
+                                            pyencode(outputfumen)) + "\n"
+  except:
+    with open(f"__userdata/{ctx.author.id}/tiny_error.txt", "w") as file:
+      file.write("https://fumen.zui.jp/?" + pyencode(outputfumen))
 
-  output += "All solutions: " + make_tiny("https://fumen.zui.jp/?" + pyencode(outputfumen)) + "\n"
+    with open(f"__userdata/{ctx.author.id}/tiny_error.txt", "rb") as file:
+      await ctx.send("All solutions (tinyurl failed):",
+                     file=discord.File(file, "result.txt"))
 
-  await system(ctx, f"python cover-to-path.py --csv-path {coverfile} --output-file-path {covertopathfile} --unglued-fumen-script-path unglueFumen.js  > {tempfile}")
-  await system(ctx, f"npx sfinder-minimal {covertopathfile} > {tempfile}")
-  await system(ctx, f"python true_minimal.py > {tempfile}")
-  outputlink = open(tempfile).read().splitlines()[1]
-  output += f"The minimal followup set is {outputlink}"
+    remove(f"__userdata/{ctx.author.id}/tiny_error.txt")
+
   await ctx.reply(output)
 
   remove(spinfile)
   remove(queuefeedfile)
   remove(coverfile)
   remove(coveroutputfile)
-  remove(covertopathfile)
+  remove(tempfile)
 
-@bot.command(aliases=["unglue"]) #unglue is already a command
-async def ungluefumen(ctx, fumen):
-  await ctx.reply("Please provide a cover queue")
-  fumen = unglue(bestsolve[0])
+
+@bot.command(aliases=["coverpercent", "cp"])
+async def cover_percent(ctx,
+                      fumens=None,
+                      cover_queue=None,
+                      percent_queue=None,
+                      clear=4,
+                      minimal_type="normal",
+                      mirror="no"):
+  if (fumens == None):
+    await ctx.reply("Please provide a fumen")
+    return
+  elif (cover_queue == None):
+    await ctx.reply("Please provide a cover queue")
+    return
+  elif (percent_queue == None):
+    await ctx.reply("Please provide a percent queue")
+    return
+
+  if "file" in fumens.lower():
+    try:
+      # Get the attachment + parse
+      attachment = ctx.message.attachments[0]
+      file_bytes = await attachment.read()
+      fumens = file_bytes.decode()
+    except:
+      await ctx.reply("File read failed.")
+      return
+  
+  coverfile = f"__userdata/{ctx.author.id}/cover.csv"
+  coveroutputfile = f"__userdata/{ctx.author.id}/ezsfinder.txt"
+  covertopathfile = f"__userdata/{ctx.author.id}/cover-to-path.csv"
+  tempfile = f"__userdata/{ctx.author.id}/ezsfinder.txt"
+  errorfile = f"__userdata/{ctx.author.id}/error.txt"
+  
+  gluedfumens = fumensplit([fumens])
+  fumens = []
+  for i in gluedfumens:
+    fumens.append(glue(unglue(i)))
+  
+  fumens = " ".join(fumens)
+  
+  covercommand = await system(
+    ctx,
+    f"java -jar sfinder.jar cover -t {fumens} -p {cover_queue} --kicks kicks/jstris180.properties -d 180 -o {coverfile} -M {minimal_type} -m {mirror} > {coveroutputfile} 2> {errorfile}"
+  )
+  if (covercommand != 0):
+    await ctx.reply(
+      "An error has occured with the cover command and the parameters you sent."
+    )
+    await ctx.reply(file=discord.File(errorfile))
+    return
+  
+  output = ""
+  
+  outputdict = {} # {fumen:[cover, percent, set(failqueues)]}
+  coveroutput = open(coveroutputfile).read().splitlines()
+  for i in coveroutput:
+    if ("fumen.zui.jp" in i):
+      coverfumen = i.split("fumen.zui.jp/?")[1]
+      coverpercent = float(i.split(" %")[0])
+      #if float(coverpercent) > 0.0: # for removes non tsd/tss/tet/etc. solutions (ADD BACK IF WANTED)
+      outputdict[coverfumen] = [float(coverpercent), 0.0] # GLUED KEY
+    elif ("OR" in i):
+      totalcover = i.split(" = ")[1]
+      output += f"The total coverage is {totalcover}\n"
+  
+  tempdict = {}
+  for glued_fumen, data in outputdict.items():
+    tempdict[unglue(glued_fumen)] = data
+  outputdict = tempdict
+    
+  
+  percentfumens = {} # {grayfumen:[fumen1, fumen2...]} 
+  for pfumen in outputdict.keys():
+    grayfumen = decode(pfumen)
+    grayfumen = re.sub("[SZJLTIO]", "X", grayfumen)
+    grayfumen = re.sub("\n", "", grayfumen)
+    grayfumen = encode(grayfumen)
+  
+    if grayfumen in percentfumens.keys():
+      percentfumens[grayfumen].append(pfumen)
+    else:
+      percentfumens[grayfumen] = [pfumen]
+  
+  for percent_fumen, fumens in percentfumens.items():
+    percentcommand = await system(
+    ctx,
+      f"java -jar sfinder.jar percent --tetfu {percent_fumen} --patterns {percent_queue} --clear {clear} -K kicks/jstris180.properties -d 180 > {tempfile} 2> error.txt"
+    )
+    if (percentcommand != 0):
+      await ctx.reply(
+        "Something went wrong with running percent. Please ping cringemoment or the other guy"
+      )
+      await ctx.reply(file=discord.File("error.txt"))
+      bot.get_command("sfinder").reset_cooldown(ctx)
+      return
+  
+    p_output = open(tempfile).read() # output already exists >:(
+    solverate = float(p_output[p_output.find("success"):p_output.find("success") +
+                        20].split()[2][:-1])
+  
+    if solverate >= 0:
+      for pfumen in fumens:
+        outputdict[pfumen][1] = solverate
+    else:
+      for pfumen in fumens:
+        outputdict.pop(pfumen)
+
+  outputdict = dict(sorted(outputdict.items(), key=lambda x:x[1][1], reverse=True))
+  
+  outputfumen = []
+  for ofumen, data in outputdict.items():
+    outputfumen.append(
+      Page(Field(field=decode(ofumen), garbage="__________"), comment=f"Cover: {data[0]}, Solve: {data[1]}"))
+  
+  try:
+    output += "All solutions: " + make_tiny("https://fumen.zui.jp/?" +
+                                            pyencode(outputfumen)) + "\n"
+  except:
+    with open(f"__userdata/{ctx.author.id}/tiny_error.txt", "w") as file:
+      file.write("https://fumen.zui.jp/?" + pyencode(outputfumen))
+  
+    with open(f"__userdata/{ctx.author.id}/tiny_error.txt", "rb") as file:
+      await ctx.send("All solutions (tinyurl failed):",
+                     file=discord.File(file, "result.txt"))
+  
+    remove(f"__userdata/{ctx.author.id}/tiny_error.txt")
+  
+  await ctx.reply(output)
+  
+  remove(coverfile)
+  remove(coveroutputfile)
+  remove(tempfile)
+
+
+@bot.command(aliases=["pc_setup", "setup_finder, setupfinder"])
+async def pcsetup(ctx, *, parameters=None):
+  if parameters is None:
+    await ctx.reply("Parameters are missing, please set some.")
+  elif "-o" in parameters:
+    await ctx.reply(
+      "I'm sorry, but the -o flag messes with the bot. Please don't use it.")
+  elif "-lp" in parameters or "--log-path" in parameters:
+    await ctx.reply(
+      "I'm sorry, but the -o flag messes with the bot. Please don't use it.")
+  else:
+    parameters = parameters.replace('>', "")
+    output_filename = f"__userdata/{ctx.author.id}/theosfinderoutput.txt"
+    error_filename = f"__userdata/{ctx.author.id}/theosfindererror.txt"
+
+    lastcommand = await system(
+      ctx,
+      f"java -jar sfinder-pcsetup-v0.2.1.jar pcsetup {parameters} > {output_filename} 2> {error_filename}"
+    )
+
+    if (lastcommand != 0):
+      await ctx.reply(file=discord.File(error_filename))
+
+    await ctx.reply(file=discord.File(output_filename))
+
+    # Delete the output file
+    remove(output_filename)
+    remove(error_filename)
+
+
+# Accesses ALL of db
+@bot.command(aliases=["db"])
+async def database(ctx, key=None):
+  if not bot_admin(ctx):
+    ctx.reply("Insufficient permissions young lad!!!!!!!")
+    return
+  if key == None:
+    await ctx.reply(db.keys())
+    return
+
+  if key in db.keys():
+    del db[key]
+    await ctx.send(f"Deleted key `{key}` successfully!",
+                   reference=ctx.message)
+  else:
+    db[key] = "boy"
+    await ctx.send(f"Added key `{key}` successfully!",
+                   reference=ctx.message)
+
+
+@bot.command()
+async def catboy(ctx):
+  url = "https://rand-image-api.beaterofall.repl.co/catboy/"
+  # Fetch the image from the URL
+  response = requests.get(url)
+  response.raise_for_status(
+  )  # Raise an error if the request was not successful
+
+  # Send the image in the Discord channel
+  image_bytes = response.content
+  file = discord.File(io.BytesIO(image_bytes), filename="catgirl.png")
+  await ctx.send(file=file)
+
 
 bot.run(bot_token)

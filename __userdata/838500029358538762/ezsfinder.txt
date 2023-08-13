@@ -1,0 +1,2 @@
+5040 patterns, 5040 success
+1605 edges, 228 nodes
